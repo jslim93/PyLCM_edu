@@ -9,7 +9,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
 
-        e_s = 611.2 * np.exp(17.62 * (T_parcel - 273.15) / (T_parcel - 29.65))
+        e_s = esatw( T_parcel )
         e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
         supersat = e_a / e_s - 1.0
 
@@ -45,7 +45,39 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
 
     return particles_list, T_parcel, q_parcel
 
-import numpy as np
+def esatw(T):
+    a = [6.11239921, 0.443987641, 0.142986287e-1,
+         0.264847430e-3, 0.302950461e-5, 0.206739458e-7,
+         0.640689451e-10, -0.952447341e-13, -0.976195544e-15]
+
+    dT = T - 273.15
+    esatw = a[0] + dT * (a[1] + dT * (a[2] + dT * (a[3] + dT * (a[4] + dT * (a[5] + dT * (a[6] + dT * (a[7] + a[8] * dT)))))))
+    esatw *= 100.0
+
+    return esatw
+
+def r_equi(S,T,r_aerosol, rho_aero,molecular_weight_aero):
+    S_internal = min( S, -0.0001 )
+    afactor = 2.0 * sigma_air_liq(T) / ( rho_liq * rv * T ) # curvature effect
+    bfactor = vanthoff_aero * rho_aero * molecular_weight_water / ( rho_liq * molecular_weight_aero ) # solute effect
+
+#     Iterative solver ( 0 = S - A / r + B / r^3 => r = ( B / ( A / r - S ) )^(1/3) )
+    r_equi_0 = 1.0
+    r_equi   = 1.0E-6
+    
+    while ( abs( ( r_equi - r_equi_0 ) / r_equi_0 ) > 1.0E-20 ):
+        r_equi_0 = r_equi
+        r_equi   = ( ( bfactor * r_aerosol**3 ) / ( afactor / r_equi - S_internal ) )**(1.0/3.0)
+    return(r_equi)
+
+def sigma_air_liq(tabs):
+    tabs_c = tabs - 273.15
+    #!
+    #!--    Pruppacher and Klett (1997), Eq. 5-12
+    sigma_air_liq = 75.93 + 0.115 * tabs_c    + 6.818e-2 * tabs_c**2 + 6.511e-3 * tabs_c**3 + 2.933e-4 * tabs_c**4 + 6.283e-6 * tabs_c**5 + 5.285e-8 * tabs_c**6
+    sigma_air_liq = sigma_air_liq * 1.0E-3
+    
+    return(sigma_air_liq)
 
 def radius_liquid_euler(r_ini, dt_int, r0, G_pre, supersat, ventilation_effect, afactor, bfactor, r_aero, D_pre, radiation):
     r_eul = r_ini

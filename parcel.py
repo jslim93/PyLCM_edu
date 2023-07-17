@@ -7,7 +7,7 @@ def parcel_rho(P_parcel, T_parcel):
     p_env = P_parcel
     T_env = T_parcel
     theta_env = T_parcel * ( p0 / p_env )**( r_a / cp )
-    e_s       = 611.2 * np.exp( 17.62 * ( T_env - 273.15 ) / ( T_env - 29.65 ) )
+    e_s = esatw( T_parcel )
     
     rho_parcel = p_env / ( r_a * T_parcel )
     V_parcel   = 100.0 / rho_parcel
