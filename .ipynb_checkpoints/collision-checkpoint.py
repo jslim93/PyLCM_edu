@@ -7,12 +7,14 @@ from tqdm import tqdm
 import itertools
 
 def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
-
-    permutations = list(itertools.permutations(particles_list))
-    half_length = len(permutations) // 2
     
-    particle_list1 = permutations[:half_length]  # Splitting into the first half
-    particle_list2 = permutations[half_length:]  # Splitting into the second half
+    #shuffle the particle list for LSM (linear sampling method)
+    particles.shuffle(particles_list)
+    nptcl = len(particles_list)
+    half_length = len(particles_list) // 2
+    
+    particle_list1 = particles_list[:half_length]  # Splitting into the first half
+    particle_list2 = particles_list[half_length:]  # Splitting into the second half
 
     for particle1, particle2 in zip(particle_list1,particle_list2):
                
@@ -25,7 +27,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
         check_final = False
         check_collection = False
 
-        check_final, check_collection = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel)
+        check_final, check_collection = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl)
 
         if check_final:
             if particle1.A == particle2.A:
@@ -57,23 +59,24 @@ def liquid_update_collection(particle1, particle2):
         ptcl_int1 = particle2
         ptcl_int2 = particle1
     
-    x_int = ptcl_int1.M / ptcl_int1.A
+    x_int = ptcl_int2.M / ptcl_int2.A
 
-    ptcl_int2.M = ptcl_int2.M + ptcl_int2.A * x_int
+    ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int
     
-    ptcl_int1.A = ptcl_int1.A - ptcl_int2.A
-    ptcl_int1.M = ptcl_int1.M - ptcl_int2.A * x_int
-
+    ptcl_int2.A = ptcl_int2.A - ptcl_int1.A
+    ptcl_int2.M = ptcl_int2.M - ptcl_int1.A * x_int
+    
     if particle1.A < particle2.A:
         particle1 =  ptcl_int1
         particle2 =  ptcl_int2 
     else:
         particle1 =  ptcl_int2
         particle2 =  ptcl_int1
-        
+    
     return(particle1, particle2)
 
 def same_weights_update(ptcl_int1, ptcl_int2):
+    """
     x_int = ptcl_int2.M / ptcl_int2.A
 
     A_n = max(ptcl_int2.A // 2, 1)
@@ -84,14 +87,22 @@ def same_weights_update(ptcl_int1, ptcl_int2):
 
     ptcl_int1.A = A_m
     ptcl_int1.M = ptcl_int1.A * x_int
-
+    """
+    
+    ptcl_int1.M = ptcl_int1.M + ptcl_int2.M 
+    ptcl_int2.M = ptcl_int1.M * 0.5
+    ptcl_int1.M = ptcl_int1.M * 0.5
+    
+    ptcl_int2.A = ptcl_int1.A * 0.5
+    ptcl_int2.A = ptcl_int1.A * 0.5
+    
     return(ptcl_int1, ptcl_int2)
 
 
 import math
 import numpy as np
 
-def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel):
+def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl):
     # Constants
     pi = math.pi
     rho_liq = 1000.0
@@ -127,7 +138,10 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
     #        K = gck(R_m, R_n, diss_rate_LEM) * E_WG09(R_m, R_n, diss_rate_LEM) * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r)
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
+    p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
+    
     x_rand = np.random.random()
+    
     if p_crit > x_rand:
         check_final = True
         check_collection = True
