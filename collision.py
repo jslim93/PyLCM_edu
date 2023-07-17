@@ -8,39 +8,31 @@ import itertools
 
 def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
 
-    # Generate permutations for the original list
-   # particle_list_temp= list(itertools.permutations(particles_list))
-
-    # Splitting into the first half
-    #particle_list1 = particle_list_temp[:len(particle_list_temp)//2]
-
-    # Splitting into the second half
-   # particle_list2 = particle_list_temp[len(particle_list_temp)//2:]
-
+    permutations = list(itertools.permutations(particles_list))
+    half_length = len(permutations) // 2
     
-    particle_list1 = particles_list[:len(particles_list)//2]  # Splitting into the first half
-    particle_list2 = particles_list[len(particles_list)//2:]  # Splitting into the second half
-    
-    for particle1 in particle_list1:
-        for particle2 in particle_list2:
+    particle_list1 = permutations[:half_length]  # Splitting into the first half
+    particle_list2 = permutations[half_length:]  # Splitting into the second half
+
+    for particle1, particle2 in zip(particle_list1,particle_list2):
                
-            if min(particle1.A, particle2.A) <= 0:
-                continue
+        if min(particle1.A, particle2.A) <= 0:
+            continue
 
-            if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
-                continue
-            
-            check_final = False
-            check_collection = False
-            
-            check_final, check_collection = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel)
+        if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
+            continue
 
-            if check_final:
-                if particle1.A == particle2.A:
-                    particle1, particle2 = same_weights_update(particle1, particle2)
-                
-                elif check_collection:
-                    particle1, particle2 = liquid_update_collection(particle1, particle2)
+        check_final = False
+        check_collection = False
+
+        check_final, check_collection = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel)
+
+        if check_final:
+            if particle1.A == particle2.A:
+                particle1, particle2 = same_weights_update(particle1, particle2)
+
+            elif check_collection:
+                particle1, particle2 = liquid_update_collection(particle1, particle2)
 
 
 # Merge the lists at the end of the loop
