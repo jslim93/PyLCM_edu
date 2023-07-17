@@ -41,5 +41,5 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, qa, qc, qr, na, nc, nr):
         "Time (s)", "z (m)", "T (K)", "qv (g/kg)", "QA", "QC (g/kg)", "QR (g/kg)", "NA", "NC", "NR"))
 
     # Print the updated output
-    print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.2f} {:<8.2f} {:<8.2f} {:<8.2f} {:<8.2f} {:<8.2f}".format(
+    print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.5f} {:<8.5f} {:<8.5f} {:<8.2f} {:<8.2f} {:<8.2f}".format(
         t * dt + 1, z_parcel, T_parcel, 1e3 * q_parcel, 1e3 * qa, 1e3 * qc, 1e3 * qr, na / 1e6, nc / 1e6, nr / 1e6))
