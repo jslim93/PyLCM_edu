@@ -26,11 +26,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, aero_r_seed,N
     radius = np.logspace(np.log10(1.0E-9), np.log10(1.0E-6), n_ptcl)
     dlogr   = ( np.log(2.0E-6) - np.log(1.0E-9) ) / n_ptcl
     
-    # Calculate the PDF of the overlapping lognormal distributions
-    pdf_sum = np.zeros_like(radius)
-    for N, mu, sigma in zip(N_aero, mu_aero, sigma_aero):
-        pdf = lognormal_pdf(radius, mu,sigma)
-        pdf_sum += N * pdf
+
     
     #Initialize particle (aerosol particles)
     for i in range(n_ptcl):
@@ -43,6 +39,12 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, aero_r_seed,N
         
         #bin-like method to generate dist. where each particle represent diff. number of droplets
         elif mode_aero_init == "weighting_factor":
+            
+            # Calculate the PDF of the overlapping lognormal distributions
+            pdf_sum = np.zeros_like(radius)
+            for N, mu, sigma in zip(N_aero, mu_aero, sigma_aero):
+                pdf = lognormal_pdf(radius, mu,sigma)
+                pdf_sum += N * pdf
             # Define the range of values to evaluate the PDF
             particle.A = air_mass_parcel * pdf_sum[i] * dlogr * radius[i]
             particle.Ns = radius[i]**3 * 4./3. * np.pi * rho_aero * particle.A
