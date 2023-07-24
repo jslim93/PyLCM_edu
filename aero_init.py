@@ -8,7 +8,7 @@ from print_plot import *
 from scipy.stats import lognorm
 
 
-def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, aero_r_seed,N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero):
+def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero):
     
     #Aerosol inititial radius
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
@@ -34,8 +34,50 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, aero_r_seed,N
         
         # RNG method to generate dist. where all particles represents same number of droplets
         if mode_aero_init == "random":
+            # Random updated for 4 modes
+            
+            # assigning the number of droplets to the 4 modes according to specified n_particles and N_aero[i]
+            # (result is now no longer int)
+            n_particles_mode1 = N_aero[0] / np.sum(N_aero) * n_ptcl
+            n_particles_mode2 = N_aero[1] / np.sum(N_aero) * n_ptcl
+            n_particles_mode3 = N_aero[2] / np.sum(N_aero) * n_ptcl
+            n_particles_mode4 = N_aero[3] / np.sum(N_aero) * n_ptcl
+            
+            # truncate particle modes to int and sum them up
+            n_particles_intsum = int(n_particles_mode1) + int(n_particles_mode2) + int(n_particles_mode3) + int(n_particles_mode4)
+            
+            # sum of the particles in the different modes (float)
+            n_particles_floatsum = n_particles_mode1 + n_particles_mode2 + n_particles_mode3 + n_particles_mode4
+            
+            # compare the int and the float sum
+            n_difference = n_particles_floatsum - n_particles_intsum
+            
+            # add the missing droplets (or remove the droplets which are too many) to the first mode
+            n_particles_mode1 = int(int(n_particles_mode1) + n_difference)
+            
+            # convert the other modes to int type
+            n_particles_mode2 = int(n_particles_mode2)
+            n_particles_mode3 = int(n_particles_mode3)
+            n_particles_mode4 = int(n_particles_mode4)
+            
+            # Generate log-normal distribution for the first mode
+            mode1_values = np.random.lognormal(mu_aero[0], sigma_aero[0], n_particles_mode1)
+
+            # Generate log-normal distribution for the second mode
+            mode2_values = np.random.lognormal(mu_aero[1], sigma_aero[1], n_particles_mode2)
+            
+            # Generate log-normal distribution for the third mode
+            mode3_values = np.random.lognormal(mu_aero[2], sigma_aero[2], n_particles_mode3)
+            
+            # Generate log-normal distribution for the 4th mode
+            mode4_values = np.random.lognormal(mu_aero[3], sigma_aero[3], n_particles_mode4)
+
+            # Combine the values from both modes
+            aero_r_seed = np.concatenate((mode1_values, mode2_values, mode3_values, mode4_values))
+                       
             particle.A = air_mass_parcel * np.sum(N_aero)/n_ptcl
             particle.Ns = aero_r_seed[i]**3 * 4./3. * np.pi * rho_aero * particle.A
+            
         
         #bin-like method to generate dist. where each particle represent diff. number of droplets
         elif mode_aero_init == "weighting_factor":
