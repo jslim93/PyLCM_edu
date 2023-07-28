@@ -24,11 +24,11 @@ def spec_plot(ax, spectra_arr, nt,dt, log_edges):
     cbar = plt.colorbar(contour, ax=ax, format="%.0e")
 
     # Add labels and title
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Radius ($\mu m$)")
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Radius [µm]")
     ax.set_title("DSD time evolution")
     
-    plt.show()
+    
     
     
 def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
