@@ -10,7 +10,7 @@ from condensation import *
 from collision import *
 from analysis import *
 
-def spec_plot(ax, spectra_arr, nt,dt, log_edges):
+def spec_plot(ax, spectra_arr, nt,dt, rm_spec):
     # Clear the previous plot
     clear_output(wait=True)
 
@@ -18,7 +18,7 @@ def spec_plot(ax, spectra_arr, nt,dt, log_edges):
     ax.set_yscale("log")
 
     # Create the contour plot with a logarithmic color scale
-    contour = ax.contourf(np.arange(nt+1)*dt, log_edges, spectra_arr.T, norm=matplotlib.colors.LogNorm())
+    contour = ax.contourf(np.arange(nt+1)*dt, 1e6*rm_spec, spectra_arr.T, norm=matplotlib.colors.LogNorm())
 
     # Create a logarithmic colorbar
     cbar = plt.colorbar(contour, ax=ax, format="%.0e")
@@ -27,7 +27,7 @@ def spec_plot(ax, spectra_arr, nt,dt, log_edges):
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Radius [µm]")
     ax.set_title("DSD time evolution")
-    ax.set_ylim([1e-8,2e-3])    
+    ax.set_ylim([1e-2,1e4])    
     
     
 def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
@@ -42,7 +42,7 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
     print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.3f}  {:<8.3f}  {:<8.3f}  {:<8.2f}  {:<8.2f}  {:<8.2f}".format(
         (t+1) * dt, z_parcel, T_parcel, 1e3 * q_parcel, 100* rh, 1e3 * qc, 1e3 * qr, na / 1e6, nc / 1e6, nr / 1e6))
     
-def subplot_array_function(plot_mode, dt, nt, log_edges, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr):
+def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr):
     # t not needed?
     # initialisation of subplot layout
     fig, axs = plt.subplots(2, 4, sharex=False, sharey=False, figsize=(18,8))
@@ -132,15 +132,17 @@ def subplot_array_function(plot_mode, dt, nt, log_edges, qa_ts, qc_ts, qr_ts, na
 
     # 2nd row
     # DSD size distribution
-    spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,log_edges)
+    spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,rm_spec)
 
     # particle densities
-    for i in range(18):
-        axs[1,1].plot(log_edges*1e6, spectra_arr[i*100]/1e6)
+    for i in range(180):
+        spectra_arr_nan = spectra_arr
+        spectra_arr_nan[np.where(spectra_arr_nan<=0)] = np.nan
+        axs[1,1].plot(rm_spec*1e6, spectra_arr_nan[i*20]/1e6)
         axs[1,1].set_yscale("log")
         axs[1,1].set_xscale("log")
         axs[1,1].set_xlabel('radius [µm]')
         axs[1,1].set_ylabel('particle densities N [cm$^{-3}$]')
-        axs[1,1].set_ylim([1e-1,100])
+        #axs[1,1].set_ylim(1)
 
     fig.tight_layout()
