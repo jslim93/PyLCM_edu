@@ -18,7 +18,7 @@ def spec_plot(ax, spectra_arr, nt,dt, log_edges):
     ax.set_yscale("log")
 
     # Create the contour plot with a logarithmic color scale
-    contour = ax.contourf(np.arange(nt+1)*dt, log_edges[1:], spectra_arr.T, norm=matplotlib.colors.LogNorm())
+    contour = ax.contourf(np.arange(nt+1)*dt, log_edges, spectra_arr.T, norm=matplotlib.colors.LogNorm())
 
     # Create a logarithmic colorbar
     cbar = plt.colorbar(contour, ax=ax, format="%.0e")
@@ -27,9 +27,7 @@ def spec_plot(ax, spectra_arr, nt,dt, log_edges):
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Radius [µm]")
     ax.set_title("DSD time evolution")
-    ax.set_ylim([1e-8,2e-3])
-    
-    
+    ax.set_ylim([1e-8,2e-3])    
     
     
 def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
@@ -138,7 +136,7 @@ def subplot_array_function(plot_mode, dt, nt, log_edges, qa_ts, qc_ts, qr_ts, na
 
     # particle densities
     for i in range(18):
-        axs[1,1].plot(log_edges[1:]*1e6, spectra_arr[i*100]/1e6)
+        axs[1,1].plot(log_edges*1e6, spectra_arr[i*100]/1e6)
         axs[1,1].set_yscale("log")
         axs[1,1].set_xscale("log")
         axs[1,1].set_xlabel('radius [µm]')
