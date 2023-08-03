@@ -25,9 +25,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_ae
  
     radius = np.logspace(np.log10(1.0E-9), np.log10(1.0E-6), n_ptcl)
     dlogr   = ( np.log(2.0E-6) - np.log(1.0E-9) ) / n_ptcl
-    
-
-    
+        
     #Initialize particle (aerosol particles)
     for i in range(n_ptcl):
         particle = particles(i)

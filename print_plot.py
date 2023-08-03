@@ -27,6 +27,7 @@ def spec_plot(ax, spectra_arr, nt,dt, log_edges):
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Radius [µm]")
     ax.set_title("DSD time evolution")
+    ax.set_ylim([1e-8,2e-3])
     
     
     
@@ -118,6 +119,7 @@ def subplot_array_function(plot_mode, dt, nt, log_edges, qa_ts, qc_ts, qr_ts, na
         axs[0,3].plot(time_array,nr_ts/1e6, label = "Rain")
         axs[0,3].set_xlabel("Time [s]")
         axs[0,3].set_ylabel('number concentration of particles $n_x$ [mg$^{-1}$]')
+        axs[0,3].set_yscale('log')
         axs[0,3].legend()
         axs[0,3].grid()
     elif plot_mode=='vertical profile':
@@ -126,6 +128,7 @@ def subplot_array_function(plot_mode, dt, nt, log_edges, qa_ts, qc_ts, qr_ts, na
         axs[0,3].plot(nr_ts/1e6, z_parcel_array, label = "Rain")
         axs[0,3].set_ylabel("Height $z$ [m]")
         axs[0,3].set_xlabel('number concentration of particles $n_x$ [mg$^{-1}$]')
+        axs[0,3].set_xscale('log')
         axs[0,3].grid()
 
 
@@ -140,5 +143,6 @@ def subplot_array_function(plot_mode, dt, nt, log_edges, qa_ts, qc_ts, qr_ts, na
         axs[1,1].set_xscale("log")
         axs[1,1].set_xlabel('radius [µm]')
         axs[1,1].set_ylabel('particle densities N [cm$^{-3}$]')
+        axs[1,1].set_ylim([1e-1,100])
 
     fig.tight_layout()
