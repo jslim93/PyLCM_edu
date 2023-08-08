@@ -5,20 +5,24 @@ from tqdm import tqdm
 
 def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel, rho_aero, molecular_weight_aero = 1.):
     dq_liq = 0
-
+#
+#   Diffusional growth of aerosols, droplets, ice crystals
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
 
+#   Get supersaturation
         e_s = esatw( T_parcel )
         e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
         supersat = e_a / e_s - 1.0
 
+#  Thermal conductivity for water (from Rogers and Yau, Table 7.1)
         thermal_conductivity = 7.94048E-05 * T_parcel + 0.00227011
+#  Moldecular diffusivity of water vapor in air (Hall und Pruppacher, 1976)
         diff_coeff = 0.211E-4 * (T_parcel / 273.15) ** 1.94 * (101325.0 / P_parcel)
 
         G_pre = 1.0 / (rho_liq * rv * T_parcel / (e_s * diff_coeff) + (l_v / (rv * T_parcel) - 1.0) *
                        rho_liq * l_v / (thermal_conductivity * T_parcel))
-
+# Initial radius
         r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq)) ** 0.33333333333
         r_N = (particle.Ns / (particle.A * 4.0 / 3.0 * np.pi * rho_aero)) ** 0.33333333333
 
