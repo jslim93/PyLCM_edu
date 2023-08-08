@@ -150,3 +150,4 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         #axs[1,1].set_ylim(1)
 
     fig.tight_layout()
+    fig.show()

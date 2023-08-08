@@ -85,7 +85,8 @@ def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='
     rowlist = firstnames + timesteplist
     
     # attatch the columns of rm, rl, rr to the spectra array
-    dsd_array = np.column_stack((rm_spec*1e6, rl_spec*1e6, rr_spec*1e6, spectra_arr.T))
+    dsd_array = np.column_stack((rm_spec*1e6, rl_spec*1e6, rr_spec*1e6, spectra_arr.T/1e6))
+    # new: division /1e6 in spectra_arr as done for the DSD plots, to match the unit cm⁻3
     dsd_array = dsd_array.T
     # convert to pandas DataFrame and assigning rowlist as index column (row names)
     dsd_dataframe = pd.DataFrame(dsd_array, index=rowlist)
