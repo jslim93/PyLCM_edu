@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.colors
 import copy
 from IPython.display import clear_output
+from matplotlib import cm
 from parameters import *
 from micro import *
 from aero_init import *
@@ -130,17 +131,18 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         axs[0,3].set_xscale('log')
         axs[0,3].grid()
 
-
     # 2nd row
     # DSD size distribution
     spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,rm_spec)
-
+    nt_spec = 180
+    cmap = cm.get_cmap('jet')
+    norm = plt.Normalize(0, nt_spec - 1)
     # particle densities
-    for i in range(180):
+    for i in range(nt_spec):
         spectra_arr_nan = copy.deepcopy(spectra_arr) 
         # deepcopy needed so that values <= 0 are masked out only in the copy for the plot (and remain for the data output)
         spectra_arr_nan[np.where(spectra_arr_nan<=0)] = np.nan
-        axs[1,1].plot(rm_spec*1e6, spectra_arr_nan[i*20]/1e6)
+        axs[1,1].plot(rm_spec*1e6, spectra_arr_nan[i*20]/1e6, color=cmap(norm(i)))
         axs[1,1].set_yscale("log")
         axs[1,1].set_xscale("log")
         axs[1,1].set_xlabel('radius [µm]')

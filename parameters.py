@@ -1,3 +1,5 @@
+import numpy as np
+
 rho_a = 1.225E-3 #g/cm3
 rho_liq = 1000.0 # density of liquid water (kg/m3)
 rv = 461.0 # specific gas constant water vapor (J/kg/K)
@@ -29,3 +31,24 @@ n_s = 1.0E19 # concentration of water molecules in contact with surface of ice g
 sigma_stefan_boltzmann = 5.670374419E-8 #! (in W/m2/T4) Stefan Boltzmann konstant 
 beta_env = 1.0E-5
 vanthoff_aero = 2.00
+rho_aero = 2170.0
+molecular_weight_aero = 0.058443
+#-------------------------------------------------------
+#parameter to draw spectra. 
+#-------------------------------------------------------
+
+alpha_spec   = 1.0    # bin spacing: mass(n+1) = mass(n) * 2^alpha_spec
+r_start_spec = 0.005E-6 #! smallest radius for spectra; 0.01E-6 to see haze, cloud droplets, and rain; 1.5625 to see cloud droplets and rain
+x_start_spec =4.0 / 3.0 * np.pi * rho_liq * ( r_start_spec )**3
+r_end_spec = 8000.0E-6
+x_end_spec = 4.0 / 3.0 * np.pi * rho_liq * ( r_end_spec )**3
+
+n_bins  = int( np.log10( x_end_spec / x_start_spec ) / np.log10( 2.0**alpha_spec ) )
+
+n_bins_spec = np.arange(1,n_bins)
+xl = x_start_spec * (2**alpha_spec)**(n_bins_spec-1) # where is x_start_spec defined? Maybe just 1?
+xr = x_start_spec * (2**alpha_spec)**(n_bins_spec)
+xm = np.sqrt(xl * xr)
+rm_spec = ( xm / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)  # this is the mean radius of the bin
+rl_spec = ( xl / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)
+rr_spec = ( xr / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)

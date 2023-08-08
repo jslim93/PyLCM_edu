@@ -11,10 +11,11 @@ from parcel import *
 from condensation import *
 from collision import *
 
-def qc_qr_analysis(particles_list,air_mass_parcel,log_edges):
-    nbins = 100
-    spec = np.zeros(nbins)
+def qc_qr_analysis(particles_list,air_mass_parcel,log_edges, nbins):
+    nbins = nbins - 1 # number of bins are 1 smaller than number of edges.
     
+    spec = np.zeros(nbins)
+     
     activation_radius_ts = 1.0E-6  # Activation radius in meters, example value
     seperation_radius_ts = 25.0E-6
     # Calculate the total mass of particles with r_liq larger than activation_radius_ts
@@ -49,10 +50,12 @@ def qc_qr_analysis(particles_list,air_mass_parcel,log_edges):
     return(spec,qa, qc,qr, NA, NC, NR)
 
 def get_spec(nbins,spectra_arr,log_edges,r_liq,weight_factor,air_mass_parcel):
+    from parameters import  rr_spec
+    from parameters import  rl_spec
     
     bin_idx = np.searchsorted(log_edges, r_liq, side='right') - 1
     if 0 <= bin_idx < nbins:
-        spectra_arr[bin_idx] += weight_factor / air_mass_parcel
+        spectra_arr[bin_idx] += weight_factor / air_mass_parcel / (rr_spec[bin_idx] - rl_spec[bin_idx])
 
     return spectra_arr
 
