@@ -146,7 +146,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         axs[1,1].set_yscale("log")
         axs[1,1].set_xscale("log")
         axs[1,1].set_xlabel('radius [µm]')
-        axs[1,1].set_ylabel('particle densities N [cm$^{-3}$]')
+        axs[1,1].set_ylabel('particle densities dN/dlog(R) [mg$^{-1}$]')
         #axs[1,1].set_ylim(1)
 
     fig.tight_layout()
