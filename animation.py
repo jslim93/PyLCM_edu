@@ -79,9 +79,9 @@ def animation_call(fig, time_array, t, dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_t
     
     
     # fig.update_layout for the title
-    static_title = 'Time series: Current model output values: '
-    print_output_str = 'Time (s): '+str((t+1)*dt)+', z (m): '+str(np.round(z_parcel_array[t]), decimals=1)+', T (K): '+str(np.round(T_parcel_array[t]), decimals=1)
-    current_title = static_title+print_output_str
+    #static_title = 'Time series: Current model output values: '
+    print_output_str = 'Time (s): '+str((t+1)*dt)+', z (m): '+str(np.round(z_parcel_array[t], decimals=2))+', RH (%): '+str(np.round(RH_parcel_array[t]*100, decimals=3))+', T (K): '+str(np.round(T_parcel_array[t], decimals=2))
+    current_title = print_output_str
     fig.update_layout(title=current_title)
     
     # Display updated figure
