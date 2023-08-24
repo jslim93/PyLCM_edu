@@ -7,6 +7,71 @@ from print_plot import *
 
 from scipy.stats import lognorm
 
+def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, collision_start_t_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, max_z_widget, mode_aero_init_widget, gridwidget):
+    # reads the values of the model steering parameters out of the widgets
+    # returns the values needed for model initialization
+    
+    dt = dt_widget.value #0.5
+    nt = nt_widget.value #100
+
+    do_condensation = Condensation_widget.value  #default: True
+    do_collision    = Collision_widget.value  #default: False
+
+    collision_start_time = collision_start_t_widget.value
+    n_particles = n_particles_widget.value
+
+    #parcel info. 
+    T_parcel   = T_widget.value
+    P_parcel   = P_widget.value
+    RH_parcel  = RH_widget.value
+    w_parcel   = w_widget.value
+    z_parcel   = 0.0 #m
+
+    # RH to q conversion
+    q_parcel    = RH_parcel * esatw( T_parcel ) / ( P_parcel - RH_parcel * esatw( T_parcel ) ) * r_a / rv
+    
+    # new: max_z now depends on collision_start_time and w_parcel
+    # => strange results if collision_start_time is quite small
+    # changed back to manual max_z initialization
+    # max_z = collision_start_time * w_parcel 
+    
+    max_z = max_z_widget.value
+
+    #aerosol initialization
+    mode_aero_init = mode_aero_init_widget.value  # "weighting_factor", 'random'
+
+    # read in the variables given above taking into account unit factors
+    N_aero     = [gridwidget[1, 0].value*1.0E6, gridwidget[1, 1].value*1.0E6, gridwidget[1, 2].value*1.0E6, gridwidget[1, 3].value*1.0E6]
+    mu_aero    = [gridwidget[2, 0].value*1.0E-6, gridwidget[2, 1].value*1.0E-6, gridwidget[2, 2].value*1.0E-6, gridwidget[2, 3].value*1.0E-6]
+    sigma_aero = [gridwidget[3, 0].value, gridwidget[3, 1].value, gridwidget[3, 2].value, gridwidget[3, 3].value]
+    
+    # truncate the array before taking the log if one of the N_aero_i is 0, which means that this will no longer be used
+    N_aero_array = np.array(N_aero) # first: convert into np.array
+    zeroindices  = np.where(N_aero_array==0) # get the number of ther mode which is empty
+    zeroindices  = zeroindices[0]       # some conversion for better usage
+
+    # conversion of the other indices
+    mu_aero_array = np.array(mu_aero)
+    sigma_aero_array = np.array(sigma_aero)
+
+    # now delete the respective item in each array (N, mu, sigma)
+    if len(zeroindices) > 0:
+        # delete
+        N_aero_array     = np.delete(N_aero_array, zeroindices)
+        mu_aero_array    = np.delete(mu_aero_array, zeroindices)
+        sigma_aero_array = np.delete(sigma_aero_array, zeroindices)
+
+    # now perform the log of the mu and the sigma arrays
+    mu_aero_array = np.log(mu_aero_array)
+    sigma_aero_array = np.log(sigma_aero_array)
+
+    # renaming
+    N_aero = N_aero_array
+    mu_aero = mu_aero_array
+    sigma_aero = sigma_aero_array
+    
+    return mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, collision_start_time
+
 
 def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero):
     

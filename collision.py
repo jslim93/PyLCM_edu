@@ -17,22 +17,29 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
     particle_list2 = particles_list[half_length:]  # Splitting into the second half
 
     for particle1, particle2 in zip(particle_list1,particle_list2):
-               
+        
+        #  A superdroplet must contain at least one real particle to collect other droplets
         if min(particle1.A, particle2.A) <= 0:
             continue
-
+        
+        # The larger droplet should be larger than 10.0 µm to cause collisions.
+        # (This is just done to save computing time. Is this ok for riming?)
         if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
             continue
 
         check_final = False
         check_collection = False
-
+        
+        # Find out what kind of interaction (or none) takes place
         check_final, check_collection = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl)
 
         if check_final:
+            
+            # A special treatment is necessary if weighting factors are identical
             if particle1.A == particle2.A:
                 particle1, particle2 = same_weights_update(particle1, particle2)
 
+            # Each droplet of the super-droplet with the smaller weighting factor collects one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
                 particle1, particle2 = liquid_update_collection(particle1, particle2)
 
@@ -52,6 +59,9 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
 
 def liquid_update_collection(particle1, particle2):
     
+    # _int1: gains total individual mass
+    # _int2: loses total mass, constant individual mass
+    # (check if this holds also in the python version, Fortran mod_collection l. 434)
     if particle1.A < particle2.A:
         ptcl_int1 = particle1
         ptcl_int2 = particle2
@@ -61,11 +71,13 @@ def liquid_update_collection(particle1, particle2):
     
     x_int = ptcl_int2.M / ptcl_int2.A
 
+    # Update of M, A (water mass and particle number)
     ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int
     
     ptcl_int2.A = ptcl_int2.A - ptcl_int1.A
     ptcl_int2.M = ptcl_int2.M - ptcl_int1.A * x_int
     
+    # The superdroplet with the smaller A will be indexed particle1 in the following (l. 51 in the Fortran)
     if particle1.A < particle2.A:
         particle1 =  ptcl_int1
         particle2 =  ptcl_int2 
@@ -153,6 +165,7 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
 
 
 def E_H80(r1, r2):
+    # Collision efficiencies by Hall (1980)
     r0 = np.array([6.0, 8.0, 10.0, 15.0, 20.0, 25.0,
                    30.0, 40.0, 50.0, 60.0, 70.0, 100.0,
                    150.0, 200.0, 300.0])
@@ -242,7 +255,9 @@ def E_S09(r_m, r_n, v_r, rho_liq,t_parcel):
 
 def ws_drops_beard(radius, rho_parcel, rho_liq, p_env, T_parcel):
 
-    #Calculate the terminal velocity of a water droplet in air
+    # Calculate the terminal velocity of a water droplet in air
+    # Droplet terminal velocity (Beard, 1976, J. Atmos. Sci.).
+    # T_parcel, rho_parcel, p_env must be provided
 
     b = [-0.318657e1, 0.992696, -0.153193e-2, -0.987059e-3, -0.578878e-3, 0.855176e-4, -0.327815e-5]
     c = [-0.500015e1, 0.523778e1, -0.204914e1, 0.475294, -0.542819e-1, 0.238449e-2]
@@ -253,7 +268,7 @@ def ws_drops_beard(radius, rho_parcel, rho_liq, p_env, T_parcel):
     T0 = 293.15
     rho0 = 1.292509
     
-    diameter = max(2.0 * radius, 0.1e-6)
+    diameter = max(2.0 * radius, 0.1e-6) # set minimum value to prevent dividing by zero
 
     eta = rho_parcel * eta0 / rho0
     l = l0 * (eta / eta0) * (p0 / p_env) * math.sqrt(T_parcel / T0)

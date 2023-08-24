@@ -28,11 +28,11 @@ alpha_m = 0.5 # gas kinetic correction of water vapor diffusion (deposition coef
 N_l =  N_avogadro * rho_liq / molecular_weight_water, # number of water molecules per volume of water
 m_w = molecular_weight_water / N_avogadro # mass of a water molecule
 n_s = 1.0E19 # concentration of water molecules in contact with surface of ice germ/nucleus; values from 5.85E18 to 1.0E19 are found in the literature
-sigma_stefan_boltzmann = 5.670374419E-8 #! (in W/m2/T4) Stefan Boltzmann konstant 
+sigma_stefan_boltzmann = 5.670374419E-8 # (in W/m2/T4) Stefan Boltzmann konstant 
 beta_env = 1.0E-5
 vanthoff_aero = 2.00
-rho_aero = 2170.0
-molecular_weight_aero = 0.058443
+rho_aero = 2170.0 # density (kg/m3)
+molecular_weight_aero = 0.058443 # (kg/mol)
 #-------------------------------------------------------
 #parameter to draw spectra. 
 #-------------------------------------------------------
