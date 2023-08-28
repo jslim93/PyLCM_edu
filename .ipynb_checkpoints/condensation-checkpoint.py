@@ -14,7 +14,7 @@ def eta_int(eta_lst, forcing, tau, dt):
     return eta_int
 """
 #   Diffusional growth of aerosols, droplets, ice crystals
-def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel, rho_aero, molecular_weight_aero = 1., S_lst):
+def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel, S_lst, rho_aero, molecular_weight_aero = 1.):
     dq_liq = 0
    
     
@@ -47,30 +47,31 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
     radiation = 0.0
     
 #new Supersat
-"""
-    tau = 0.0
-    forcing = 0.0
-    
-    tau += (r_liq **2 / (r_liq  + r0)) * (particle.A / V_parcel) 
-    forcing += (r_liq **2 / (r_liq  + r0)) * (particle.A / V_parcel) 
+    """
+        tau = 0.0
+        forcing = 0.0
 
-    tau = 1.0 / (4.0 * pi * A_pre * C_pre / qsatw_pre * tau)
-    forcing = 4.0 * pi * A_pre * C_pre * forcing
-    eta_dyn = e_a - e_s 
-    eta_lst = S_lst
-    forcing = (eta_dyn - eta_lst) / dt - forcing
+        tau += (r_liq **2 / (r_liq  + r0)) * (particle.A / V_parcel) 
+        forcing += (r_liq **2 / (r_liq  + r0)) * (particle.A / V_parcel) 
 
-    # Calculate eta_new_tmp and eta_int_tmp using the defined functions
-    eta_new_tmp = eta_new(eta_lst, forcing, tau, dt)
-    eta_int_tmp = eta_int(eta_lst, forcing, tau, dt)
+        tau = 1.0 / (4.0 * pi * A_pre * C_pre / qsatw_pre * tau)
+        forcing = 4.0 * pi * A_pre * C_pre * forcing
+        eta_dyn = e_a - e_s 
+        eta_lst = S_lst
+        forcing = (eta_dyn - eta_lst) / dt - forcing
 
-    fsw = max(min(1.0, max((min(eta_lst, eta_new_tmp) * dt - eta_int_tmp) * 1.0E35, 0.0)),
-              min(1.0, max((eta_int_tmp - max(eta_lst, eta_new_tmp) * dt) * 1.0E35, 0.0)))
+        # Calculate eta_new_tmp and eta_int_tmp using the defined functions
+        eta_new_tmp = eta_new(eta_lst, forcing, tau, dt)
+        eta_int_tmp = eta_int(eta_lst, forcing, tau, dt)
 
-    eta_mean = (eta_int_tmp * (1.0 - fsw) + fsw * (eta_lst + eta_new_tmp) * dt * 0.5) / dt
+        fsw = max(min(1.0, max((min(eta_lst, eta_new_tmp) * dt - eta_int_tmp) * 1.0E35, 0.0)),
+                  min(1.0, max((eta_int_tmp - max(eta_lst, eta_new_tmp) * dt) * 1.0E35, 0.0)))
 
-    supersat = eta_mean / e_s 
-"""
+        eta_mean = (eta_int_tmp * (1.0 - fsw) + fsw * (eta_lst + eta_new_tmp) * dt * 0.5) / dt
+
+        supersat = eta_mean / e_s 
+    """
+
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
 # Initial radius
@@ -90,7 +91,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
     S_lst = e_a - e_s
     
-    return particles_list, T_parcel, q_parcel#, S_lst 
+    return particles_list, T_parcel, q_parcel, S_lst 
 
 def esatw(T):
     # saturation water vapor pressure (Pa) (Flatau et.al, 1992, JAM)

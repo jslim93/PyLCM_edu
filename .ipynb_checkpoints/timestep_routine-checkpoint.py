@@ -46,6 +46,8 @@ def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel
     ascending_mode=ascending_mode_widget.value
     time_half_wave_parcel = 600.0  # maybe change to widget or variable input later
 
+    S_lst = 0.0
+    
     # read in display mode
     display_mode = mode_displaytype_widget.value
 
@@ -64,7 +66,7 @@ def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel
         #Condensational Growth
         dq_liq = 0.0
         if do_condensation:
-            particles_list, T_parcel, q_parcel = drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel, rho_aero, molecular_weight_aero)
+            particles_list, T_parcel, q_parcel, S_lst = drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel,S_lst, rho_aero, molecular_weight_aero)
 
         #Collisional Growth
         if do_collision:
