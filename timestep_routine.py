@@ -16,41 +16,22 @@ from print_plot import *
 from animation import *
 from widget import *
 
-def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero, nt, dt, rm_spec, ascending_mode_widget, mode_displaytype_widget, max_z, do_condensation, do_collision):
-    dz=0
-    rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
-    #Aerosol init
-    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero, molecular_weight_aero)
-    #parcel routine
-    #initalize spectrum output
-    spectra_arr = np.zeros((nt+1,len(rm_spec)))
-    # init of array for time series output
-    qa_ts,qc_ts,qr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
-    na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
-
-    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0] = qc_qr_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
+def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget):
     
-    # init of array for T_parcel, RH_parcel, q_parcel and z_parcel values for each timestep
-    T_parcel_array  = np.zeros(nt+1)
-    RH_parcel_array = np.zeros(nt+1)
-    q_parcel_array  = np.zeros(nt+1)
-    z_parcel_array  = np.zeros(nt+1)
-
-
-    # inserting the init. values to the 0th position of the arrays
-    T_parcel_array[0]  = T_parcel
-    RH_parcel_array[0] = (q_parcel * P_parcel / (q_parcel + r_a / rv)) / esatw( T_parcel ) 
-    q_parcel_array[0]  = q_parcel
-    z_parcel_array[0]  = z_parcel
+      
+    # call of the complete model initialization (model_init) (aerosol initialization included)
+    P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, \
+    max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, \
+    qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, \
+    z_parcel_array, particles_list, spectra_arr = model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, \
+                                n_particles_widget, T_widget, P_widget, RH_widget, w_widget, \
+                                max_z_widget, mode_aero_init_widget, gridwidget, \
+                                ascending_mode_widget, mode_displaytype_widget)
     
-    ascending_mode=ascending_mode_widget.value
-    time_half_wave_parcel = 600.0  # maybe change to widget or variable input later
-
-    S_lst = 0.0
-    
-    # read in display mode
-    display_mode = mode_displaytype_widget.value
-
+        
+    ########
+    # timestep routine
+    ########
     
     if display_mode == 'graphics':
         # initialization of animation
@@ -61,7 +42,7 @@ def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel
         time = (t+1)*dt
         #Parcel ascending
         #if z_parcel < max_z: 
-        z_parcel, T_parcel, rho_parcel, V_parcel, air_mass_parcel = ascend_parcel(z_parcel, T_parcel,P_parcel, w_parcel, dt, time, time_half_wave_parcel, ascending_mode, max_z)
+        z_parcel, T_parcel, rho_parcel, V_parcel, air_mass_parcel = ascend_parcel(z_parcel, T_parcel,P_parcel, w_parcel, dt, time, time_half_wave_parcel, ascending_mode, max_z=max_z)
         
         #Condensational Growth
         dq_liq = 0.0
@@ -94,5 +75,5 @@ def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel
                 animation_call(figure_item, time_array, t, dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array)
             
 
-    return time_array, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, qa_ts,qc_ts,qr_ts, na_ts,nc_ts,nr_ts, spectra_arr
+    return time_array, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, qa_ts,qc_ts,qr_ts, na_ts,nc_ts,nr_ts, spectra_arr, dt, nt
     
