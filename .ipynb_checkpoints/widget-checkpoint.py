@@ -13,21 +13,15 @@ def model_steering_input():
     Condensation_widget = widgets.Checkbox(description='Condensation:', value=True)
     Collision_widget = widgets.Checkbox(description='Collision:', value=False)
 
-    n_particles_widget = widgets.BoundedIntText(description='n_particles:', min=500, max=1000, value=500)
-    n_particles_slider = widgets.IntSlider(description=' ', min=500, max=1000, value=500)
-    # link slider and textbox
-    mylink = widgets.jslink((n_particles_widget, 'value'), (n_particles_slider, 'value'))
-
-    collision_start_t_widget = widgets.BoundedIntText(description='collision start time [s]:', min = 0,max=10000,value = 0)
-    
+    n_particles_widget = widgets.BoundedIntText(description='n_particles:', min=100, max=1000, value=500)
+   
     max_z_widget = widgets.BoundedFloatText(description='z_max [m]:', min = 0.0, max = 1400.0, step = 0.1, value=1500.0)
     # max value of collision_start_t_widget not updated when nt changed in the textbox! It remains at the default value of nt_widget
 
     # Display the widgets
-    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, n_particles_slider, \
-            collision_start_t_widget, max_z_widget) 
+    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, max_z_widget) 
     
-    return dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, n_particles_slider, collision_start_t_widget, max_z_widget
+    return dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, max_z_widget
 
 def parcel_info_input():
     # section for widgets for parcel info
@@ -44,18 +38,18 @@ def parcel_info_input():
 
 def ascending_mode_input():
     # user can choice the ascending mode
-    ascending_mode_widget = widgets.ToggleButtons(options=['linear', 'sine', 'in_cloud_oscillation'], value='linear', description='ascending', layout={'width': 'max-content'}, disabled=False)
-    display('ascending mode: ', ascending_mode_widget)
+    ascending_mode_widget = widgets.ToggleButtons(options=['linear', 'sine', 'in_cloud_oscillation'], value='linear', description='Mode', layout={'width': 'max-content'}, disabled=False)
+    display(ascending_mode_widget)
     # maybe include more advanced ascending modes later
     
     return ascending_mode_widget
 
 def aero_mode_input():
     # widgets for aerosol initialisation
-    mode_aero_init_widget = widgets.ToggleButtons(options=['weighting_factor', 'random'], value='weighting_factor', description='mode of aerosol init.:', layout={'width': 'max-content'}, disabled=False)
+    mode_aero_init_widget = widgets.ToggleButtons(options=['weighting_factor', 'random'], value='weighting_factor', layout={'width': 'max-content'}, disabled=False)
 
     # Display widgets
-    display('Aerosol initialisation: ', mode_aero_init_widget)
+    display('Aerosol initialisation mode: ', mode_aero_init_widget)
     
     return mode_aero_init_widget
 
@@ -64,8 +58,8 @@ def grid_modes_input():
     # N, mu, sigma for each mode
     # widgets in GridspecLayout
     # see: https://ipywidgets.readthedocs.io/en/latest/examples/Layout%20Templates.html#style-attributes
-    print('Please insert the parameters for each mode (=column). If you only want e.g. 3 modes, leave the last column empty')
-    print('Click on the heading buttons to plot the distributions of the respective modes. (Plot functionality will be added later)')
+    #print('Please insert the parameters for each mode (=column). If you only want e.g. 3 modes, leave the last column empty')
+    #print('Click on the heading buttons to plot the distributions of the respective modes. (Plot functionality will be added later)')
     print('N_aero: number of aerosols per cubic centimeter, mu: mean droplet radius, sigma: std of mu')
 
     gridwidget = widgets.GridspecLayout(4, 4)

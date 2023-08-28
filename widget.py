@@ -38,8 +38,8 @@ def parcel_info_input():
 
 def ascending_mode_input():
     # user can choice the ascending mode
-    ascending_mode_widget = widgets.ToggleButtons(options=['linear', 'sine', 'in_cloud_oscillation'], value='linear', description='ascending', layout={'width': 'max-content'}, disabled=False)
-    display('ascending mode: ', ascending_mode_widget)
+    ascending_mode_widget = widgets.ToggleButtons(options=['linear', 'sine', 'in_cloud_oscillation'], value='linear', description='Mode', layout={'width': 'max-content'}, disabled=False)
+    display(ascending_mode_widget)
     # maybe include more advanced ascending modes later
     
     return ascending_mode_widget

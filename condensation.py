@@ -71,7 +71,6 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
 
     supersat = eta_mean / e_s 
 """
-
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
 # Initial radius

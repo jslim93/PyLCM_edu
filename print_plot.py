@@ -12,6 +12,7 @@ from condensation import *
 from collision import *
 from analysis import *
 
+
 def spec_plot(ax, spectra_arr, nt,dt, rm_spec):
     # Clear the previous plot
     clear_output(wait=True)
@@ -151,3 +152,4 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
 
     fig.tight_layout()
     fig.show()
+
