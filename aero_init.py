@@ -7,7 +7,7 @@ from print_plot import *
 
 from scipy.stats import lognorm
 
-def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, collision_start_t_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, max_z_widget, mode_aero_init_widget, gridwidget):
+def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, max_z_widget, mode_aero_init_widget, gridwidget):
     # reads the values of the model steering parameters out of the widgets
     # returns the values needed for model initialization
     
@@ -17,7 +17,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, coll
     do_condensation = Condensation_widget.value  #default: True
     do_collision    = Collision_widget.value  #default: False
 
-    collision_start_time = collision_start_t_widget.value
+
     n_particles = n_particles_widget.value
 
     #parcel info. 
@@ -29,12 +29,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, coll
 
     # RH to q conversion
     q_parcel    = RH_parcel * esatw( T_parcel ) / ( P_parcel - RH_parcel * esatw( T_parcel ) ) * r_a / rv
-    
-    # new: max_z now depends on collision_start_time and w_parcel
-    # => strange results if collision_start_time is quite small
-    # changed back to manual max_z initialization
-    # max_z = collision_start_time * w_parcel 
-    
+        
     max_z = max_z_widget.value
 
     #aerosol initialization
@@ -70,7 +65,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, coll
     mu_aero = mu_aero_array
     sigma_aero = sigma_aero_array
     
-    return mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, collision_start_time
+    return mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision
 
 
 def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero):

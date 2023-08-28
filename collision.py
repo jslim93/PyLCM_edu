@@ -15,7 +15,8 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
     
     particle_list1 = particles_list[:half_length]  # Splitting into the first half
     particle_list2 = particles_list[half_length:]  # Splitting into the second half
-
+    
+    #Collisions are considered between two shuffled particle lists
     for particle1, particle2 in zip(particle_list1,particle_list2):
         
         #  A superdroplet must contain at least one real particle to collect other droplets
@@ -23,7 +24,6 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
             continue
         
         # The larger droplet should be larger than 10.0 µm to cause collisions.
-        # (This is just done to save computing time. Is this ok for riming?)
         if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
             continue
 
@@ -201,12 +201,14 @@ def E_H80(r1, r2):
 
     # Calculate the radius class index of particles with respect to array r0
     # Radius has to be in microns
-    max_r = max(r1, r2) * 1e6
-    ir = 15
-    for k in range(14):
-        if max_r < r0[k]:
-            ir = k
-            break
+    rmax = max(r1,r2)
+    if ( rmax * 1.0E6 >= r0[14] ):
+        ir = 15
+    else:    
+        for k in range(15):
+            if rmax*1e6 < r0[k]:
+                ir = k
+                break
 
     # Two-dimensional linear interpolation of the collision efficiency
     # Radius has to be in microns

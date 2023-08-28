@@ -14,9 +14,9 @@ from collision import *
 from analysis import *
 from print_plot import *
 from animation import *
-from user_parameters import *
+from widget import *
 
-def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero, nt, dt, rm_spec, ascending_mode_widget, mode_displaytype_widget, max_z, do_condensation, do_collision, collision_start_time):
+def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero, nt, dt, rm_spec, ascending_mode_widget, mode_displaytype_widget, max_z, do_condensation, do_collision):
     dz=0
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
     #Aerosol init
@@ -67,8 +67,9 @@ def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel
             particles_list, T_parcel, q_parcel = drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel, rho_aero, molecular_weight_aero)
 
         #Collisional Growth
-        if do_collision and time > collision_start_time:
+        if do_collision:
             particles_list = collection(dt, particles_list,rho_parcel, rho_liq, P_parcel, T_parcel)
+            
         #Analysis
         spectra_arr[t+1],qa_ts[t+1], qc_ts[t+1],qr_ts[t+1], na_ts[t+1], nc_ts[t+1], nr_ts[t+1] = qc_qr_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
         RH_parcel = (q_parcel * P_parcel / (q_parcel + r_a / rv)) / esatw( T_parcel ) 
@@ -90,8 +91,6 @@ def timesteps_function(mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel
             if (time%5) == 0:
                 animation_call(figure_item, time_array, t, dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array)
             
-    
-    
-    
+
     return time_array, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, qa_ts,qc_ts,qr_ts, na_ts,nc_ts,nr_ts, spectra_arr
     
