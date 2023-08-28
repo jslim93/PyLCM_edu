@@ -91,7 +91,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
     S_lst = e_a - e_s
     
-    return particles_list, T_parcel, q_parcel, S_lst 
+    return particles_list, T_parcel, q_parcel#, S_lst 
 
 def esatw(T):
     # saturation water vapor pressure (Pa) (Flatau et.al, 1992, JAM)
