@@ -20,11 +20,13 @@ def model_steering_input():
    
     max_z_widget = widgets.BoundedFloatText(description='z_max [m]:', min = 0.0, max = 2000.0, step = 0.1, value=1500.0, style=style)
     # max value of collision_start_t_widget not updated when nt changed in the textbox! It remains at the default value of nt_widget
+    
+    z_widget = widgets.BoundedFloatText(description='z_0 [m]:', min = 0.0, max = 800.0, step = 0.1, value=0.0, style=style)
 
     # Display the widgets
-    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, max_z_widget) 
+    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, max_z_widget, z_widget) 
     
-    return dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, max_z_widget
+    return dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, max_z_widget, z_widget
 
 def parcel_info_input():
     # section for widgets for parcel info

@@ -36,8 +36,8 @@ def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, time_half_wave_
             
 
     elif ascending_mode=='in_cloud_oscillation':
-        phase = -np.arcsin(np.deg2rad(w_parcel))
         #phase = -np.arcsin(w_parcel)
+        phase = np.arccos(2/np.pi)
         if time < t_start_oscillation:
             dz = w_parcel * dt
             z_parcel   = z_parcel + dz

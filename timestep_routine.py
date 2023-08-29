@@ -16,7 +16,7 @@ from print_plot import *
 from animation import *
 from widget import *
 
-def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget):
+def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, z_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget):
     
       
     # call of the complete model initialization (model_init) (aerosol initialization included)
@@ -24,7 +24,7 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
     max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, \
     qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, \
     z_parcel_array, particles_list, spectra_arr = model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, \
-                                n_particles_widget, T_widget, P_widget, RH_widget, w_widget, \
+                                n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, \
                                 max_z_widget, mode_aero_init_widget, gridwidget, \
                                 ascending_mode_widget, mode_displaytype_widget)
     

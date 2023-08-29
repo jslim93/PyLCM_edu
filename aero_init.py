@@ -7,7 +7,7 @@ from print_plot import *
 
 from scipy.stats import lognorm
 
-def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget):
+def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget):
     # reads the values of the model steering parameters out of the widgets
     # returns the values needed for model initialization
     
@@ -20,17 +20,19 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
 
     n_particles = n_particles_widget.value
 
+
     #parcel info. 
     T_parcel   = T_widget.value
     P_parcel   = P_widget.value
     RH_parcel  = RH_widget.value
     w_parcel   = w_widget.value
-    z_parcel   = 0.0 #m
+    z_parcel   = z_widget.value
 
     # RH to q conversion
     q_parcel    = RH_parcel * esatw( T_parcel ) / ( P_parcel - RH_parcel * esatw( T_parcel ) ) * r_a / rv
         
     max_z = max_z_widget.value
+    
 
     #aerosol initialization
     mode_aero_init = mode_aero_init_widget.value  # "weighting_factor", 'random'
