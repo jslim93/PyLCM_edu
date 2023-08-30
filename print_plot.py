@@ -45,8 +45,7 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
     print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.3f}  {:<8.3f}  {:<8.3f}  {:<8.2f}  {:<8.2f}  {:<8.2f}".format(
         (t+1) * dt, z_parcel, T_parcel, 1e3 * q_parcel, 100* rh, 1e3 * qc, 1e3 * qr, na / 1e6, nc / 1e6, nr / 1e6))
     
-def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr):
-    # t not needed?
+def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget):
     # initialisation of subplot layout
     fig, axs = plt.subplots(2, 4, sharex=False, sharey=False, figsize=(18,8))
     
@@ -135,21 +134,37 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     # 2nd row
     # DSD size distribution
     spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,rm_spec)
-    nt_spec = 180
+    # calculate number of drawn spectra (nt_spec) via nt of the model and user given increment (via increment_widget)
+    line_increment = increment_widget.value
+    nt_spec = nt / line_increment
+    nt_spec = int(nt_spec)
     cmap = cm.get_cmap('jet')
     norm = plt.Normalize(0, nt_spec - 1)
+    
     # particle densities
+    # only every 20th timestep will be displayed
     for i in range(nt_spec):
         spectra_arr_nan = copy.deepcopy(spectra_arr) 
         # deepcopy needed so that values <= 0 are masked out only in the copy for the plot (and remain for the data output)
         spectra_arr_nan[np.where(spectra_arr_nan<=0)] = np.nan
-        axs[1,1].plot(rm_spec*1e6, spectra_arr_nan[i*20]/1e6, color=cmap(norm(i)))
+        axs[1,1].plot(rm_spec*1e6, spectra_arr_nan[i*line_increment]/1e6, color=cmap(norm(i)))
         axs[1,1].set_yscale("log")
         axs[1,1].set_xscale("log")
         axs[1,1].set_xlabel('radius [µm]')
         axs[1,1].set_ylabel('particle densities dN/dlog(R) [mg$^{-1}$]')
         #axs[1,1].set_ylim(1)
+        
+    # add colorbar for particle densities plot
+    # select the plot axis
+    plotaxis = axs[1,1]
+    # get the colormap
+    cmap_spectra = plt.cm.get_cmap('jet')
+    # normalize the colormap to the max. timestep, take into account the timestep interval dt [s]
+    norm2 = plt.Normalize(vmin=0, vmax=np.max((nt_spec*line_increment-line_increment)*dt))
+    # produce mappable object
+    scalarmap = plt.cm.ScalarMappable(norm=norm2, cmap=cmap_spectra)
+    # add colorbar
+    fig.colorbar(scalarmap, ax=plotaxis, orientation='vertical', label='Time [t]')
 
     fig.tight_layout()
     fig.show()
-

@@ -136,11 +136,15 @@ def timestep_display_mode_settings():
     return mode_displaytype_widget
 
 # function for plot widgets
-def plot_widgets_settings():
+def plot_widgets_settings(nt):
     # user can choice if he wants the plots time-dependent or height-dependent (except of DSD and particle densities always being time dependent)
     # Adjust the style that descriptions are displayed in full length
     style = {'description_width': 'initial'}
     mode_plots_widget = widgets.ToggleButtons(options=['time-series', 'vertical profile'], value='time-series', description='Plots are:', layout={'width': 'max-content'}, disabled=False, style=style)
-    display(mode_plots_widget)
+    # Widget to set in which increment lines for the spectra are drawn
+    increment_widget = widgets.BoundedIntText(description='For droplet spectra: increment: ', value=20, min = 1, max = nt, step=1, style=style)
     
-    return mode_plots_widget
+    # display the widgets
+    display(mode_plots_widget, 'For droplet spectra: set increment (e.g. 20: every 20th timestep a line is drawn): ', increment_widget)
+    
+    return mode_plots_widget, increment_widget
