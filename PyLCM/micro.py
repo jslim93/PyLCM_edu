@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from parameters import *
+from PyLCM.parameters import *
 import random
 
 class particles:

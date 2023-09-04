@@ -1,6 +1,6 @@
 import numpy as np
-from parameters import *
-from micro import *
+from PyLCM.parameters import *
+from PyLCM.micro import *
 from tqdm import tqdm
 """
 def eta_new(eta_lst, forcing, tau, dt):
@@ -14,10 +14,10 @@ def eta_int(eta_lst, forcing, tau, dt):
     return eta_int
 """
 #   Diffusional growth of aerosols, droplets, ice crystals
-def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel, S_lst, rho_aero, molecular_weight_aero = 1.):
-    dq_liq = 0
-   
+def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, act_crit_r,con_ts, act_ts, evp_ts, dea_ts):
     
+    dq_liq = 0
+    molecular_weight_aero = 1.
 #   Get supersaturation
     e_s = esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
@@ -71,17 +71,37 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
 
         supersat = eta_mean / e_s 
     """
-
+    
+    
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
 # Initial radius
         r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq)) ** 0.33333333333 # droplet radius
         r_N = (particle.Ns / (particle.A * 4.0 / 3.0 * np.pi * rho_aero)) ** 0.33333333333 # aerosol radius
-
+#Old particle liquid mass for growth rate calculation        
+        M_old  = particle.M
+        if kohler_activation_radius:
+            activation_radius = np.sqrt( 3.0 * bfactor * r_N**3 / afactor )
+        else:
+            activation_radius = act_crit_r
+#diffusional growth
         r_liq_old = r_liq
         r_liq = radius_liquid_euler_py(r_liq, dt, r0, G_pre, supersat, f_vent, afactor, bfactor, r_N, D_pre, radiation)
-
+            
         particle.M = particle.A * 4.0 / 3.0 * np.pi * rho_liq * r_liq ** 3
+        
+        if r_liq_old < r_liq:
+            con_ts = Con_ts +  (particle.M - M_old)
+            if r_liq >= activation_radius:
+                #Number of activated droplets
+                act_ts = act_ts + (particle.M - M_old)
+            
+        else:
+            evp_ts = evp_ts  +  (particle.M - M_old)
+            if r_liq < activation_radius:
+                #Number of deactivated droplets
+                dea_ts = dea_ts + (particle.M - M_old)
+        
         dq_liq = dq_liq + particle.M
 
     T_parcel = T_parcel + dq_liq * l_v / cp / air_mass_parcel
@@ -90,8 +110,8 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, dt, air_mass
     e_s = esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
     S_lst = e_a - e_s
-    
-    return particles_list, T_parcel, q_parcel, S_lst 
+        
+    return particles_list, T_parcel, q_parcel, S_lst, con_ts, act_ts, evp_ts, dea_ts 
 
 def esatw(T):
     # saturation water vapor pressure (Pa) (Flatau et.al, 1992, JAM)

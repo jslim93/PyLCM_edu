@@ -1,9 +1,10 @@
-from parameters import *
-from micro import *
 import numpy as np
+
+from PyLCM.parameters import *
+from PyLCM.micro import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
-from print_plot import *
+from Post_process.print_plot import *
 
 from scipy.stats import lognorm
 

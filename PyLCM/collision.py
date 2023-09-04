@@ -1,8 +1,8 @@
 import math
 import numpy as np
-from micro import *
-from parcel import *
-from condensation import *
+from PyLCM.micro import *
+from PyLCM.parcel import *
+from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
 
@@ -37,11 +37,13 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
             
             # A special treatment is necessary if weighting factors are identical
             if particle1.A == particle2.A:
-                particle1, particle2 = same_weights_update(particle1, particle2)
+                
+                #add acc_ts and aut_ts for same weight factor
+                particle1, particle2, acc_ts, aut_ts = same_weights_update(particle1, particle2)
 
             # Each droplet of the super-droplet with the smaller weighting factor collects one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
-                particle1, particle2 = liquid_update_collection(particle1, particle2)
+                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2)
 
 
 # Merge the lists at the end of the loop
@@ -77,6 +79,17 @@ def liquid_update_collection(particle1, particle2):
     ptcl_int2.A = ptcl_int2.A - ptcl_int1.A
     ptcl_int2.M = ptcl_int2.M - ptcl_int1.A * x_int
     
+    mass_crit = (r_crit ** 3) * 4.0 / 3.0 * np.pi * rho_liq
+    large_drop_size = particle1.M / particle1.A
+    small_drop_size = particle2.M / particle2.A
+    
+    #Accretion mass
+    if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
+        acc_ts += ptcl_int1.A * x_int
+    #Autoconversion mass
+    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
+        aut_ts += ptcl_int1.M
+    
     # The superdroplet with the smaller A will be indexed particle1 in the following (l. 51 in the Fortran)
     if particle1.A < particle2.A:
         particle1 =  ptcl_int1
@@ -85,30 +98,30 @@ def liquid_update_collection(particle1, particle2):
         particle1 =  ptcl_int2
         particle2 =  ptcl_int1
     
-    return(particle1, particle2)
+    return(particle1, particle2, acc_ts, aut_ts)
 
 def same_weights_update(ptcl_int1, ptcl_int2):
-    """
-    x_int = ptcl_int2.M / ptcl_int2.A
-
-    A_n = max(ptcl_int2.A // 2, 1)
-    A_m = ptcl_int2.A - A_n
-
-    ptcl_int2.A = A_n
-    ptcl_int2.M = ptcl_int2.A * x_int
-
-    ptcl_int1.A = A_m
-    ptcl_int1.M = ptcl_int1.A * x_int
-    """
     
     ptcl_int1.M = ptcl_int1.M + ptcl_int2.M 
     ptcl_int2.M = ptcl_int1.M * 0.5
+    
+    mass_crit = (r_crit ** 3) * 4.0 / 3.0 * np.pi * rho_liq
+    large_drop_size = particle1.M / particle1.A
+    small_drop_size = particle2.M / particle2.A
+    
+    #Accretion mass
+    if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
+        acc_ts += ptcl_int1.A * x_int
+    #Autoconversion mass
+    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
+        aut_ts += ptcl_int1.M
+    
     ptcl_int1.M = ptcl_int1.M * 0.5
     
     ptcl_int2.A = ptcl_int1.A * 0.5
     ptcl_int2.A = ptcl_int1.A * 0.5
     
-    return(ptcl_int1, ptcl_int2)
+    return(ptcl_int1, ptcl_int2, acc_ts, aut_ts)
 
 
 import math

@@ -50,14 +50,13 @@ def qc_qr_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     return(spec,qa, qc,qr, NA, NC, NR)
 
 def get_spec(nbins,spectra_arr,log_edges,r_liq,weight_factor,air_mass_parcel):
-    from parameters import  rr_spec
-    from parameters import  rl_spec
-    from parameters import  rm_spec
+    from PyLCM.parameters import  rr_spec
+    from PyLCM.parameters import  rl_spec
+    from PyLCM.parameters import  rm_spec
     
     bin_idx = np.searchsorted(log_edges, r_liq, side='right') - 1
     if 0 <= bin_idx < nbins:
-        spectra_arr[bin_idx] += weight_factor / air_mass_parcel / (rr_spec[bin_idx] - rl_spec[bin_idx])*rm_spec[bin_idx]
-        
+        spectra_arr[bin_idx] += weight_factor / air_mass_parcel / (rr_spec[bin_idx] - rl_spec[bin_idx])*rm_spec[bin_idx]     
 
     return spectra_arr
 

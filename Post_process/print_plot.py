@@ -11,7 +11,7 @@ from PyLCM.aero_init import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 from PyLCM.collision import *
-from analysis import *
+from Post_process.analysis import *
 
 
 def spec_plot(ax, spectra_arr, nt,dt, rm_spec):
