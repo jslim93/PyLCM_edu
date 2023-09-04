@@ -23,17 +23,17 @@ def animation_init(dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_p
 
     # Add initial traces (lines) to subplots
     fig.add_trace(go.Scatter(x=time_array, y=RH_parcel_array*100, mode='lines', line_color='lightblue', name='RH [%]', showlegend=True), row=1, col=1)
-    fig.add_trace(go.Scatter(x=time_array, y=q_parcel_array*1e3, mode='lines', line_color='lightgreen', name='$q_\mathrm{v}$ [g/kg]'), row=1, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=q_parcel_array*1e3, mode='lines', line_color='lightgreen', name='q_v [g/kg]'), row=1, col=2)
     fig.add_trace(go.Scatter(x=time_array, y=z_parcel_array, mode='lines', line_color='black', name='z [m]'), row=2, col=1)
     fig.add_trace(go.Scatter(x=time_array, y=T_parcel_array, mode='lines', line_color='red', name='T [K]'), row=2, col=2)
     # Plot for the mixing ratios (with 3 lines: aerosol, cloud, rain)
-    fig.add_trace(go.Scatter(x=time_array, y=qa_ts*1e3, mode='lines', line_color='blue', name='$q_{\mathrm{a}}$ [g/kg] Aerosol'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=time_array, y=qc_ts*1e3, mode='lines', line_color='orange', name='$q_{\mathrm{c}$ [g/kg] Cloud'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=time_array, y=qr_ts*1e3, mode='lines', line_color='green', name='$q_{\mathrm{r}$ [g/kg] Rain'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=time_array, y=qa_ts*1e3, mode='lines', line_color='blue', name='q_a [g/kg] Aerosol'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=time_array, y=qc_ts*1e3, mode='lines', line_color='orange', name='q_c [g/kg] Cloud'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=time_array, y=qr_ts*1e3, mode='lines', line_color='green', name='q_r [g/kg] Rain'), row=3, col=1)
     # Plot for the number concentrations (not yet set to log axis)
-    fig.add_trace(go.Scatter(x=time_array, y=na_ts/1e6, mode='lines', line_color='blue', name='$n_{\mathrm{a}$ [$\mathrm{mg^{⁻1}}$] Aerosol'), row=3, col=2)
-    fig.add_trace(go.Scatter(x=time_array, y=nc_ts/1e6, mode='lines', line_color='orange', name='$n_{\mathrm{c}$ [$\mathrm{mg^{⁻1}}$] Cloud'), row=3, col=2)
-    fig.add_trace(go.Scatter(x=time_array, y=nr_ts/1e6, mode='lines', line_color='green', name='$n_{\mathrm{r}$ [$\mathrm{mg^{⁻1}}$] Rain'), row=3, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=na_ts/1e6, mode='lines', line_color='blue', name='n_a [mg⁻1] Aerosol'), row=3, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=nc_ts/1e6, mode='lines', line_color='orange', name='n_c [mg⁻1] Cloud'), row=3, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=nr_ts/1e6, mode='lines', line_color='green', name='n_r [mg⁻1] Rain'), row=3, col=2)
     
     
     # some layout commands

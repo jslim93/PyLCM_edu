@@ -6,7 +6,7 @@ from IPython.display import clear_output
 from matplotlib import cm
 
 from PyLCM.parameters import *
-from PyLCM.micro import *
+from PyLCM.micro_init import *
 from PyLCM.aero_init import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
