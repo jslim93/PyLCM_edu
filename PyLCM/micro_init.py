@@ -8,6 +8,5 @@ class particles:
         self.id     = n
         self.M      = 1.0 # mass
         self.A      = 1.0 # weighting factor
-        # self.r      = 1.0 # radius
     def shuffle(particles_list):
         random.shuffle(particles_list)

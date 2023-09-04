@@ -1,6 +1,6 @@
 import numpy as np
 from PyLCM.parameters import *
-from PyLCM.micro import *
+from PyLCM.micro_init import *
 from tqdm import tqdm
 """
 def eta_new(eta_lst, forcing, tau, dt):
