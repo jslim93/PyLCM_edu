@@ -51,7 +51,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         r_liq = radius_liquid_euler_py(r_liq, dt, r0, G_pre, supersat, f_vent, afactor, bfactor, r_N, D_pre, radiation)
             
         particle.M = particle.A * 4.0 / 3.0 * np.pi * rho_liq * r_liq ** 3
-        """
+        
         if r_liq_old < r_liq:
             con_ts = con_ts +  (particle.M - M_old)
             if r_liq >= activation_radius:
@@ -63,7 +63,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
             if r_liq < activation_radius:
                 #Number of deactivated droplets
                 dea_ts = dea_ts + (particle.M - M_old)
-        """
+        
         dq_liq = dq_liq + particle.M
 
     T_parcel = T_parcel + dq_liq * l_v / cp / air_mass_parcel
@@ -115,20 +115,22 @@ def sigma_air_liq(tabs):
     return(sigma_air_liq)
 
 from scipy.optimize import newton
-
 def radius_liquid_euler_py(r_ini, dt_int, r0, G_pre, supersat, ventilation_effect, afactor, bfactor, r_aero, D_pre, radiation):
+    
     def equation(r_eul):
         # Newton-Raphson scheme (2nd order)
         r_eul_3 = r_eul**3
         r_eul_r0 = r_eul + r0
-        dr2dt = 2.0 * G_pre * ventilation_effect * (supersat - afactor / r_eul + bfactor * r_aero**3 / r_eul_3 - D_pre * radiation * r_eul) * r_eul / r_eul_r0
-        d2r2dtdr2 = G_pre * ventilation_effect * (afactor * r_eul_3 - bfactor * r_aero**3 * (3.0 * r_eul + 2.0 * r0) - r_eul_3 * (D_pre * radiation * r_eul * r_eul_r0 - r0 * supersat)) / (r_eul**4 * r_eul_r0**2)
+        dr2dt = 2.0 * G_pre * ventilation_effect * (supersat - afactor / r_eul + bfactor * r_aero**3 
+                                                    / r_eul_3 - D_pre * radiation * r_eul) * r_eul / r_eul_r0
         
+        d2r2dtdr2 = G_pre * ventilation_effect * (afactor * r_eul_3 - bfactor * r_aero**3 * (3.0 * r_eul + 2.0 * r0) 
+                                                  - r_eul_3 * (D_pre * radiation * r_eul * r_eul_r0 - r0 * supersat)) / (r_eul**4 * r_eul_r0**2)
         dt_eul = min(0.5 * abs(1.0 / d2r2dtdr2), dt_int)
         f = r_eul**2 - r_ini**2 - dt_eul * dr2dt
         dfdr2 = 1.0 - dt_eul * d2r2dtdr2
         return r_eul**2 - r_ini**2 - dt_eul * dr2dt
 
-    r_eul = newton(equation, r_ini)
+    r_eul = newton(equation, r_ini, maxiter=1000)
 
     return r_eul

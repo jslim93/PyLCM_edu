@@ -31,8 +31,10 @@ n_s = 1.0E19 # concentration of water molecules in contact with surface of ice g
 sigma_stefan_boltzmann = 5.670374419E-8 # (in W/m2/T4) Stefan Boltzmann konstant 
 beta_env = 1.0E-5
 vanthoff_aero = 2.00
-rho_aero = 2170.0 # density (kg/m3)
-molecular_weight_aero = 0.058443 # (kg/mol) #NH4(SO4)2
+
+#sea-salt aerosol
+rho_aero = 2170.0 # density (kg/m3) 2.17 g/cm3
+molecular_weight_aero = 0.058443 # (kg/mol)   58.443 g/mol
 
 #-------------------------------------------------------
 #parameter to draw spectra. 
