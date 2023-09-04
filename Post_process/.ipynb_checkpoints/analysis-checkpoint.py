@@ -56,7 +56,8 @@ def get_spec(nbins,spectra_arr,log_edges,r_liq,weight_factor,air_mass_parcel):
     
     bin_idx = np.searchsorted(log_edges, r_liq, side='right') - 1
     if 0 <= bin_idx < nbins:
-        spectra_arr[bin_idx] += weight_factor / air_mass_parcel / (rr_spec[bin_idx] - rl_spec[bin_idx])*rm_spec[bin_idx]     
+        spectra_arr[bin_idx] += weight_factor / air_mass_parcel / (rr_spec[bin_idx] - rl_spec[bin_idx])*rm_spec[bin_idx]
+        
 
     return spectra_arr
 
@@ -71,7 +72,7 @@ def save_model_output_variables(time_array, RH_parcel_array, q_parcel_array, T_p
     output_variables_dataframe.columns=['time', 'RH_parcel', 'q_parcel', 'T_parcel', 'z_parcel', 'qa_ts', 'qc_ts', 'qr_ts', 'na_ts', 'nc_ts', 'nr_ts']
     
     # save to csv
-    output_variables_dataframe.to_csv('output/'+filename)
+    output_variables_dataframe.to_csv('Output/'+filename)
     print('Output data written to: output/'+filename)
     
 def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='dsd_array_output.csv'):
@@ -93,7 +94,5 @@ def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='
     dsd_dataframe = pd.DataFrame(dsd_array, index=rowlist)
 
     # save to csv
-    dsd_dataframe.to_csv('output/'+filename)
+    dsd_dataframe.to_csv('Output/'+filename)
     print('Output data of droplet size distribution written to: output/'+filename)   
-    
-    

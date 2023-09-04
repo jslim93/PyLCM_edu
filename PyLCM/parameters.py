@@ -52,3 +52,8 @@ xm = np.sqrt(xl * xr)
 rm_spec = ( xm / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)  # this is the mean radius of the bin
 rl_spec = ( xl / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)
 rr_spec = ( xr / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)
+
+#-------------------------------------------------------
+#parameter to microphysics. 
+#-------------------------------------------------------
+r_sep = 25.0E-6

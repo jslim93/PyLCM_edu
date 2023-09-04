@@ -1,12 +1,12 @@
 import math
 import numpy as np
-from PyLCM.micro import *
+from PyLCM.micro_init import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
 
-def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
+def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts):
     
     #shuffle the particle list for LSM (linear sampling method)
     particles.shuffle(particles_list)
@@ -39,11 +39,11 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
             if particle1.A == particle2.A:
                 
                 #add acc_ts and aut_ts for same weight factor
-                particle1, particle2, acc_ts, aut_ts = same_weights_update(particle1, particle2)
+                particle1, particle2, acc_ts, aut_ts = same_weights_update(particle1, particle2, acc_ts, aut_ts)
 
             # Each droplet of the super-droplet with the smaller weighting factor collects one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
-                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2)
+                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2,  acc_ts, aut_ts)
 
 
 # Merge the lists at the end of the loop
@@ -57,9 +57,9 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel):
     #    print('+++ Collision time step is too long. +++')
     #    collision_timestep_error = False
     
-    return particles_list
+    return particles_list, acc_ts, aut_ts
 
-def liquid_update_collection(particle1, particle2):
+def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
     
     # _int1: gains total individual mass
     # _int2: loses total mass, constant individual mass
@@ -79,7 +79,7 @@ def liquid_update_collection(particle1, particle2):
     ptcl_int2.A = ptcl_int2.A - ptcl_int1.A
     ptcl_int2.M = ptcl_int2.M - ptcl_int1.A * x_int
     
-    mass_crit = (r_crit ** 3) * 4.0 / 3.0 * np.pi * rho_liq
+    mass_crit = (r_sep ** 3) * 4.0 / 3.0 * np.pi * rho_liq
     large_drop_size = particle1.M / particle1.A
     small_drop_size = particle2.M / particle2.A
     
@@ -100,14 +100,14 @@ def liquid_update_collection(particle1, particle2):
     
     return(particle1, particle2, acc_ts, aut_ts)
 
-def same_weights_update(ptcl_int1, ptcl_int2):
+def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
+    
+    mass_crit = (r_sep ** 3) * 4.0 / 3.0 * np.pi * rho_liq
+    large_drop_size = particle1.M / particle1.A
+    small_drop_size = particle2.M / particle2.A
     
     ptcl_int1.M = ptcl_int1.M + ptcl_int2.M 
     ptcl_int2.M = ptcl_int1.M * 0.5
-    
-    mass_crit = (r_crit ** 3) * 4.0 / 3.0 * np.pi * rho_liq
-    large_drop_size = particle1.M / particle1.A
-    small_drop_size = particle2.M / particle2.A
     
     #Accretion mass
     if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
@@ -231,7 +231,7 @@ def E_H80(r1, r2):
 
     if ir < 15:
         if ir >= 1:
-            pp = (max_r - r0[ir-1]) / (r0[ir] - r0[ir-1])
+            pp = (rmax - r0[ir-1]) / (r0[ir] - r0[ir-1])
             qq = (rq - rat[iq-1]) / (rat[iq] - rat[iq-1])
             E = (1.0 - pp) * (1.0 - qq) * ecoll[ir-1, iq-1] + pp * (1.0 - qq) * ecoll[ir, iq-1] \
                 + qq * (1.0 - pp) * ecoll[ir-1, iq] + pp * qq * ecoll[ir, iq]

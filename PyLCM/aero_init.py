@@ -1,14 +1,13 @@
-import numpy as np
-
 from PyLCM.parameters import *
-from PyLCM.micro import *
+from PyLCM.micro_init import *
+import numpy as np
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 from Post_process.print_plot import *
 
 from scipy.stats import lognorm
 
-def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, max_z_widget, mode_aero_init_widget, gridwidget):
+def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget):
     # reads the values of the model steering parameters out of the widgets
     # returns the values needed for model initialization
     
@@ -26,12 +25,13 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     P_parcel   = P_widget.value
     RH_parcel  = RH_widget.value
     w_parcel   = w_widget.value
-    z_parcel   = 0.0 #m
+    z_parcel   = z_widget.value
 
     # RH to q conversion
     q_parcel    = RH_parcel * esatw( T_parcel ) / ( P_parcel - RH_parcel * esatw( T_parcel ) ) * r_a / rv
         
     max_z = max_z_widget.value
+    
 
     #aerosol initialization
     mode_aero_init = mode_aero_init_widget.value  # "weighting_factor", 'random'
@@ -66,7 +66,49 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     mu_aero = mu_aero_array
     sigma_aero = sigma_aero_array
     
-    return mode_aero_init, n_particles, P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision
+    # further initialization
+    dz=0
+    rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
+    
+    #Aerosol init
+    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero, molecular_weight_aero)
+    
+    #parcel routine
+    #initalize spectrum output
+    spectra_arr = np.zeros((nt+1,len(rm_spec)))
+    # init of array for time series output
+    qa_ts,qc_ts,qr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
+    na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
+    con_ts, act_ts, evp_ts, dea_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
+    acc_ts, aut_ts = np.zeros(nt+1),np.zeros(nt+1)
+    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0] = qc_qr_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
+    
+    
+    # init of array for T_parcel, RH_parcel, q_parcel and z_parcel values for each timestep
+    T_parcel_array  = np.zeros(nt+1)
+    RH_parcel_array = np.zeros(nt+1)
+    q_parcel_array  = np.zeros(nt+1)
+    z_parcel_array  = np.zeros(nt+1)
+
+
+    # inserting the init. values to the 0th position of the arrays
+    T_parcel_array[0]  = T_parcel
+    RH_parcel_array[0] = (q_parcel * P_parcel / (q_parcel + r_a / rv)) / esatw( T_parcel ) 
+    q_parcel_array[0]  = q_parcel
+    z_parcel_array[0]  = z_parcel
+    
+    # read in the ascending mode which was choosen in the widget
+    ascending_mode=ascending_mode_widget.value
+    time_half_wave_parcel = 600.0  # maybe change to widget or variable input later
+
+    S_lst = 0.0
+    
+    # read in display mode
+    display_mode = mode_displaytype_widget.value
+    
+    
+    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts
+
 
 
 def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero):

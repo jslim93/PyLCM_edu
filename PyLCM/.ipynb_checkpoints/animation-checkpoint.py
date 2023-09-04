@@ -23,23 +23,23 @@ def animation_init(dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_p
 
     # Add initial traces (lines) to subplots
     fig.add_trace(go.Scatter(x=time_array, y=RH_parcel_array*100, mode='lines', line_color='lightblue', name='RH [%]', showlegend=True), row=1, col=1)
-    fig.add_trace(go.Scatter(x=time_array, y=q_parcel_array*1e3, mode='lines', line_color='lightgreen', name='q_v [g/kg]'), row=1, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=q_parcel_array*1e3, mode='lines', line_color='lightgreen', name='$q_\mathrm{v}$ [g/kg]'), row=1, col=2)
     fig.add_trace(go.Scatter(x=time_array, y=z_parcel_array, mode='lines', line_color='black', name='z [m]'), row=2, col=1)
     fig.add_trace(go.Scatter(x=time_array, y=T_parcel_array, mode='lines', line_color='red', name='T [K]'), row=2, col=2)
     # Plot for the mixing ratios (with 3 lines: aerosol, cloud, rain)
-    fig.add_trace(go.Scatter(x=time_array, y=qa_ts*1e3, mode='lines', line_color='blue', name='q_a [g/kg] Aerosol'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=time_array, y=qc_ts*1e3, mode='lines', line_color='orange', name='q_c [g/kg] Cloud'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=time_array, y=qr_ts*1e3, mode='lines', line_color='green', name='q_r [g/kg] Rain'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=time_array, y=qa_ts*1e3, mode='lines', line_color='blue', name='$q_{\mathrm{a}}$ [g/kg] Aerosol'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=time_array, y=qc_ts*1e3, mode='lines', line_color='orange', name='$q_{\mathrm{c}$ [g/kg] Cloud'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=time_array, y=qr_ts*1e3, mode='lines', line_color='green', name='$q_{\mathrm{r}$ [g/kg] Rain'), row=3, col=1)
     # Plot for the number concentrations (not yet set to log axis)
-    fig.add_trace(go.Scatter(x=time_array, y=na_ts/1e6, mode='lines', line_color='blue', name='n_a [mg⁻1] Aerosol'), row=3, col=2)
-    fig.add_trace(go.Scatter(x=time_array, y=nc_ts/1e6, mode='lines', line_color='orange', name='n_c [mg⁻1] Cloud'), row=3, col=2)
-    fig.add_trace(go.Scatter(x=time_array, y=nr_ts/1e6, mode='lines', line_color='green', name='n_r [mg⁻1] Rain'), row=3, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=na_ts/1e6, mode='lines', line_color='blue', name='$n_{\mathrm{a}$ [$\mathrm{mg^{⁻1}}$] Aerosol'), row=3, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=nc_ts/1e6, mode='lines', line_color='orange', name='$n_{\mathrm{c}$ [$\mathrm{mg^{⁻1}}$] Cloud'), row=3, col=2)
+    fig.add_trace(go.Scatter(x=time_array, y=nr_ts/1e6, mode='lines', line_color='green', name='$n_{\mathrm{r}$ [$\mathrm{mg^{⁻1}}$] Rain'), row=3, col=2)
     
     
     # some layout commands
     fig.update_layout(height=850, width=1250, title='Time series', yaxis_title='Relative Humidity RH [-]', yaxis_range=[RH_parcel_array[0]*100,104], yaxis2_title='q_v [g/kg]', yaxis3_title='Height z [m]', xaxis5_title='Time [s]', xaxis6_title='Time [s]', yaxis4_title='Temperature T [K]')
     # axis title for the last 2 subplots
-    fig.update_layout(yaxis5_title='Liquid Water Mixing ratios q_x [g/kg]', yaxis6_title='Number concentrations n_x [mg⁻1]')
+    fig.update_layout(yaxis5_title='Liquid Water Mixing ratios $q_{\mathrm{x}}$ [g/kg]', yaxis6_title='Number concentrations $n_{\mathrm{x}}$ [$\mathrm{mg^{⁻1}}$]')
     # axis title font size changed to lower value
     fig.update_layout(yaxis_title_font_size=11, yaxis1_title_font_size=11, yaxis2_title_font_size=11, yaxis3_title_font_size=11, yaxis4_title_font_size=11, yaxis5_title_font_size=11, yaxis6_title_font_size=11)
     

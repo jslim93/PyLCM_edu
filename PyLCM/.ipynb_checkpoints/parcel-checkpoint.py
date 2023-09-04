@@ -1,5 +1,5 @@
 from PyLCM.parameters import *
-from PyLCM.micro import *
+from PyLCM.micro_init import *
 from PyLCM.condensation import *
 import numpy as np
 
@@ -17,8 +17,7 @@ def parcel_rho(P_parcel, T_parcel):
     return(rho_parcel, V_parcel, air_mass_parcel) # (assumed) air mass of parcel
 
 
-def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, time_half_wave_parcel=1200.0, ascending_mode='linear', t_start_oscillation=800, max_z=1400):
-    
+def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, max_z, time_half_wave_parcel=1200.0, ascending_mode='linear', t_start_oscillation=800):
     if ascending_mode=='linear':
         if z_parcel < max_z: 
             dz = w_parcel * dt
@@ -34,10 +33,8 @@ def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, time_half_wave_
         else:
             T_parcel = T_parcel + dz * g / cp
             
-
     elif ascending_mode=='in_cloud_oscillation':
-        phase = -np.arcsin(np.deg2rad(w_parcel))
-        #phase = -np.arcsin(w_parcel)
+        phase = np.arccos(2/np.pi)
         if time < t_start_oscillation:
             dz = w_parcel * dt
             z_parcel   = z_parcel + dz
@@ -50,7 +47,6 @@ def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, time_half_wave_
                 T_parcel = T_parcel - dz * g / cp
             else:
                 T_parcel = T_parcel + dz * g / cp
-    #w_parcel = w_mean_parcel * pi / 2.0 * SIN( pi * time / time_half_wave_parcel )
     
     
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
