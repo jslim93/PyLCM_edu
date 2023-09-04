@@ -91,7 +91,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         particle.M = particle.A * 4.0 / 3.0 * np.pi * rho_liq * r_liq ** 3
         
         if r_liq_old < r_liq:
-            con_ts = Con_ts +  (particle.M - M_old)
+            con_ts = con_ts +  (particle.M - M_old)
             if r_liq >= activation_radius:
                 #Number of activated droplets
                 act_ts = act_ts + (particle.M - M_old)
