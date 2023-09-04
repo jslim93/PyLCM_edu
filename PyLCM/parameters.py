@@ -32,7 +32,8 @@ sigma_stefan_boltzmann = 5.670374419E-8 # (in W/m2/T4) Stefan Boltzmann konstant
 beta_env = 1.0E-5
 vanthoff_aero = 2.00
 rho_aero = 2170.0 # density (kg/m3)
-molecular_weight_aero = 0.058443 # (kg/mol)
+molecular_weight_aero = 0.058443 # (kg/mol) #NH4(SO4)2
+
 #-------------------------------------------------------
 #parameter to draw spectra. 
 #-------------------------------------------------------
@@ -56,4 +57,6 @@ rr_spec = ( xr / ( 4.0 / 3.0 * np.pi * rho_liq ) )**(1.0/3.0)
 #-------------------------------------------------------
 #parameter to microphysics. 
 #-------------------------------------------------------
-r_sep = 25.0E-6
+
+activation_radius_ts = 1.0E-6  # Activation radius in meters, example value
+seperation_radius_ts = 25.0E-6
