@@ -2,22 +2,11 @@ import numpy as np
 from PyLCM.parameters import *
 from PyLCM.micro_init import *
 from tqdm import tqdm
-"""
-def eta_new(eta_lst, forcing, tau, dt):
-    # Get integral absolute supersaturation following Tzivion, Feingold, and Levin (1989, JAS)
-    eta_new = tau * forcing + ( eta_lst - tau * forcing ) * np.exp( -dt / tau )
-    return eta_new
 
-def eta_int(eta_lst, forcing, tau, dt):
-    # Get new absolute supersaturation following Tzivion, Feingold, and Levin (1989, JAS)
-    eta_int = tau * ( 1.0 - np.exp( -dt / tau ) ) * ( eta_lst - tau * forcing ) + tau * forcing * dt
-    return eta_int
-"""
 #   Diffusional growth of aerosols, droplets, ice crystals
-def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, act_crit_r,con_ts, act_ts, evp_ts, dea_ts):
+def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts):
     
     dq_liq = 0
-    molecular_weight_aero = 1.
 #   Get supersaturation
     e_s = esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
@@ -45,34 +34,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
     #radiation effects, not yet implemented
     D_pre = 0.0
     radiation = 0.0
-    
-#new Supersat
-    """
-        tau = 0.0
-        forcing = 0.0
-
-        tau += (r_liq **2 / (r_liq  + r0)) * (particle.A / V_parcel) 
-        forcing += (r_liq **2 / (r_liq  + r0)) * (particle.A / V_parcel) 
-
-        tau = 1.0 / (4.0 * pi * A_pre * C_pre / qsatw_pre * tau)
-        forcing = 4.0 * pi * A_pre * C_pre * forcing
-        eta_dyn = e_a - e_s 
-        eta_lst = S_lst
-        forcing = (eta_dyn - eta_lst) / dt - forcing
-
-        # Calculate eta_new_tmp and eta_int_tmp using the defined functions
-        eta_new_tmp = eta_new(eta_lst, forcing, tau, dt)
-        eta_int_tmp = eta_int(eta_lst, forcing, tau, dt)
-
-        fsw = max(min(1.0, max((min(eta_lst, eta_new_tmp) * dt - eta_int_tmp) * 1.0E35, 0.0)),
-                  min(1.0, max((eta_int_tmp - max(eta_lst, eta_new_tmp) * dt) * 1.0E35, 0.0)))
-
-        eta_mean = (eta_int_tmp * (1.0 - fsw) + fsw * (eta_lst + eta_new_tmp) * dt * 0.5) / dt
-
-        supersat = eta_mean / e_s 
-    """
-    
-    
+        
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
 # Initial radius
@@ -83,13 +45,13 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         if kohler_activation_radius:
             activation_radius = np.sqrt( 3.0 * bfactor * r_N**3 / afactor )
         else:
-            activation_radius = act_crit_r
+            activation_radius = activation_radius_ts
 #diffusional growth
         r_liq_old = r_liq
         r_liq = radius_liquid_euler_py(r_liq, dt, r0, G_pre, supersat, f_vent, afactor, bfactor, r_N, D_pre, radiation)
             
         particle.M = particle.A * 4.0 / 3.0 * np.pi * rho_liq * r_liq ** 3
-        
+        """
         if r_liq_old < r_liq:
             con_ts = con_ts +  (particle.M - M_old)
             if r_liq >= activation_radius:
@@ -101,7 +63,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
             if r_liq < activation_radius:
                 #Number of deactivated droplets
                 dea_ts = dea_ts + (particle.M - M_old)
-        
+        """
         dq_liq = dq_liq + particle.M
 
     T_parcel = T_parcel + dq_liq * l_v / cp / air_mass_parcel
@@ -125,7 +87,7 @@ def esatw(T):
 
     return esatw
 
-def r_equi(S,T,r_aerosol, rho_aero,molecular_weight_aero):
+def r_equi(S,T,r_aerosol, rho_aero):
     # Limit supersaturation since higher saturations cause numerical issues.
     # Additionally, saturatied or supersaturated conditions do not yield a unique solution.
     

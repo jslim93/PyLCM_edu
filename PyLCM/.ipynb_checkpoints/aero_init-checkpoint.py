@@ -17,7 +17,6 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     do_condensation = Condensation_widget.value  #default: True
     do_collision    = Collision_widget.value  #default: False
 
-
     n_particles = n_particles_widget.value
 
     #parcel info. 
@@ -32,7 +31,6 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
         
     max_z = max_z_widget.value
     
-
     #aerosol initialization
     mode_aero_init = mode_aero_init_widget.value  # "weighting_factor", 'random'
 
@@ -71,7 +69,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
     
     #Aerosol init
-    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero, molecular_weight_aero)
+    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero)
     
     #parcel routine
     #initalize spectrum output
@@ -81,7 +79,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     con_ts, act_ts, evp_ts, dea_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     acc_ts, aut_ts = np.zeros(nt+1),np.zeros(nt+1)
-    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0] = qc_qr_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
+    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
     
     
     # init of array for T_parcel, RH_parcel, q_parcel and z_parcel values for each timestep
@@ -110,8 +108,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts
 
 
-
-def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero,molecular_weight_aero):
+def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero):
     
     #Aerosol inititial radius
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
@@ -159,20 +156,16 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_ae
             # add the missing droplets (or remove the droplets which are too many) to the first mode
             n_particles_mode_int[0] = int(n_particles_mode_int[0] + n_difference)
             
-            
             # Generate log-normal distribution for the modes
             for k in range(mode_count):
-                print(k)
                 if k == 0:
                     temp_arr = np.random.lognormal(mu_aero[0], sigma_aero[0], n_particles_mode_int[0])
                 else:
                     temp_arr  =  np.concatenate((temp_arr, np.random.lognormal(mu_aero[k], sigma_aero[k], n_particles_mode_int[k])))
             aero_r_seed = temp_arr
-                
                        
             particle.A = air_mass_parcel * np.sum(N_aero)/n_ptcl
             particle.Ns = aero_r_seed[i]**3 * 4./3. * np.pi * rho_aero * particle.A
-            
         
         #bin-like method to generate dist. where each particle represent diff. number of droplets
         elif mode_aero_init == "weighting_factor":
@@ -191,7 +184,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_ae
         if particle.Ns > min_mass_aero:
             r_aero = (particle.Ns/ ( particle.A * 4.0 / 3.0 * pi * rho_aero ) )**(1.0/3.0)
 
-            particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero,molecular_weight_aero))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
+            particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
         else: 
             particle.M = 0.0
 

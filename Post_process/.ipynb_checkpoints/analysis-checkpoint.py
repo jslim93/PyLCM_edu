@@ -11,19 +11,17 @@ from PyLCM.parcel import *
 from PyLCM.condensation import *
 from PyLCM.collision import *
 
-def qc_qr_analysis(particles_list,air_mass_parcel,log_edges, nbins):
+def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     nbins = nbins - 1 # number of bins are 1 smaller than number of edges.
     
     spec = np.zeros(nbins)
-     
-    activation_radius_ts = 1.0E-6  # Activation radius in meters, example value
-    seperation_radius_ts = 25.0E-6
     # Calculate the total mass of particles with r_liq larger than activation_radius_ts
     qc_mass = 0.0
     qr_mass = 0.0
+    qa_mass = 0.0
+    
     NC = 0.0
     NR = 0.0
-    qa = 0.0
     NA = 0.0
 
     for particle in particles_list:
@@ -36,13 +34,14 @@ def qc_qr_analysis(particles_list,air_mass_parcel,log_edges, nbins):
                 qr_mass += particle.M
                 NR += particle.A
         else:
-            qa += particle.M / air_mass_parcel
+            qa_mass += particle.M 
             NA += particle.A / air_mass_parcel
             
         spec = get_spec(nbins,spec,log_edges,r_liq,particle.A,air_mass_parcel)
 
     qc = qc_mass  / air_mass_parcel
     qr = qr_mass  / air_mass_parcel
+    qa = qa_mass  / air_mass_parcel
  
     NC = NC  / air_mass_parcel
     NR = NR  / air_mass_parcel
