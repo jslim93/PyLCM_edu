@@ -15,6 +15,7 @@ conda activate  PyLCM
 ```
 
 4. Install necessary packages (jupyter,numpy, scipy, pandas, matplotlib, plotly, ipywidgets)
+
 #For Mac/Linux users:
 ```
   conda install jupyter
@@ -25,6 +26,7 @@ conda activate  PyLCM
   conda install matplotlib
   conda install ipywidgets
 ```
+
 #For Windows users:
   Please install the packages listed above via Anaconda Navigator
 
@@ -38,7 +40,7 @@ conda activate  PyLCM
 ```
    jupyter notebook
 ```
-3. run PyLCM_edu.ipynb from your browser 
+3. run `PyLCM_edu.ipynb' from your browser 
 
 
 ## Usage
