@@ -1,7 +1,6 @@
 import numpy as np
 from PyLCM.parameters import *
 from PyLCM.micro_init import *
-from tqdm import tqdm
 
 #   Diffusional growth of aerosols, droplets, ice crystals
 def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts):
