@@ -1,7 +1,7 @@
 # PyLCM_parcel
 Lagrangian Cloud Model(LCM) parcel model for education purposes. 
 
-##Installation
+## Installation
 1. install anaconda3 for python / jupyter
 https://docs.anaconda.com/
 
