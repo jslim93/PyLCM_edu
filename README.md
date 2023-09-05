@@ -2,7 +2,7 @@
 Lagrangian Cloud Model(LCM) parcel model for education purposes. 
 
 ## Installation
-1. install anaconda3 for python / jupyter
+1. Install anaconda3 for python / jupyter
 https://docs.anaconda.com/
 
 2. Create a conda environment for PyLCM (Mac/Linux)
@@ -36,11 +36,11 @@ To run the PyLCM model, follow these steps:
 ```
 conda activate  PyLCM
 ```
-2. run jupyter
+2. Run jupyter
 ```
    jupyter notebook
 ```
-3. run `PyLCM_edu.ipynb' from your browser 
+3. Run `PyLCM_edu.ipynb' from your browser 
 
 
 ## Usage
