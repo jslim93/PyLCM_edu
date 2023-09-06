@@ -72,12 +72,15 @@ def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
         ptcl_int2 = particle1
     
     x_int = ptcl_int2.M / ptcl_int2.A
-
+    xs_int = ptcl_int2.Ns / ptcl_int2.A
+    
     # Update of M, A (water mass and particle number)
     ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int
+    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int
     
     ptcl_int2.A = ptcl_int2.A - ptcl_int1.A
     ptcl_int2.M = ptcl_int2.M - ptcl_int1.A * x_int
+    ptcl_int2.Ns = ptcl_int2.Ns + ptcl_int1.A * xs_int
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
     large_drop_size = particle1.M / particle1.A
@@ -88,7 +91,7 @@ def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
         acc_ts += ptcl_int1.A * x_int
     #Autoconversion mass
     if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
-        aut_ts += ptcl_int1.M
+        aut_ts += ptcl_int1.A * (large_drop_size + small_drop_size)
     
     # The superdroplet with the smaller A will be indexed particle1 in the following (l. 51 in the Fortran)
     if particle1.A < particle2.A:
@@ -105,18 +108,22 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
     large_drop_size = particle1.M / particle1.A
     small_drop_size = particle2.M / particle2.A
+    #Autoconversion mass
+    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
+        aut_ts += ptcl_int1.M + ptcl_int2.M
     
-    ptcl_int1.M = ptcl_int1.M + ptcl_int2.M 
+    ptcl_int1.M = ptcl_int1.M + ptcl_int2.M
+    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int2.Ns
+    
     ptcl_int2.M = ptcl_int1.M * 0.5
+    ptcl_int2.Ns = ptcl_int1.Ns * 0.5
     
     #Accretion mass
     if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
-        acc_ts += ptcl_int1.A * x_int
-    #Autoconversion mass
-    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
-        aut_ts += ptcl_int1.M
+        acc_ts += ptcl_int1.M * 0.5
     
     ptcl_int1.M = ptcl_int1.M * 0.5
+    ptcl_int1.Ns = ptcl_int1.Ns * 0.5
     
     ptcl_int2.A = ptcl_int1.A * 0.5
     ptcl_int2.A = ptcl_int1.A * 0.5

@@ -35,7 +35,7 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
                 NR += particle.A
         else:
             qa_mass += particle.M 
-            NA += particle.A / air_mass_parcel
+            NA += particle.A
             
         spec = get_spec(nbins,spec,log_edges,r_liq,particle.A,air_mass_parcel)
 
