@@ -42,7 +42,8 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     qc = qc_mass / air_mass_parcel /1e3
     qr = qr_mass / air_mass_parcel /1e3
     qa = qa_mass / air_mass_parcel /1e3
- 
+    
+    NA = NA / air_mass_parcel /1e6
     NC = NC / air_mass_parcel /1e6
     NR = NR / air_mass_parcel /1e6
     
