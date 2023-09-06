@@ -72,7 +72,7 @@ def save_model_output_variables(time_array, RH_parcel_array, q_parcel_array, T_p
     
     # save to csv
     output_variables_dataframe.to_csv('Output/'+filename)
-    print('Output data written to: output/'+filename)
+    print('Output data written to: Output/'+filename)
     
 def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='dsd_array_output.csv'):
     # saves the output of the droplet size distributions to a csv-file, filename can be adjusted manually
@@ -94,4 +94,4 @@ def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='
 
     # save to csv
     dsd_dataframe.to_csv('Output/'+filename)
-    print('Output data of droplet size distribution written to: output/'+filename)   
+    print('Output data of droplet size distribution written to: Output/'+filename)   

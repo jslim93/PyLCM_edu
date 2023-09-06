@@ -46,7 +46,7 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
     print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.3f}  {:<8.3f}  {:<8.3f}  {:<8.2f}  {:<8.2f}  {:<8.2f}".format(
         (t+1) * dt, z_parcel, T_parcel, 1e3 * q_parcel, 100* rh, 1e3 * qc, 1e3 * qr, na / 1e6, nc / 1e6, nr / 1e6))
     
-def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget):
+def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts):
     # initialisation of subplot layout
     fig, axs = plt.subplots(2, 4, sharex=False, sharey=False, figsize=(18,8))
     
@@ -132,17 +132,18 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         axs[0,3].grid()
 
     # 2nd row
-    # DSD size distribution
+    # plot 1: DSD size distribution
     spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,rm_spec)
+    
+    # plot 2: particle densities
     # calculate number of drawn spectra (nt_spec) via nt of the model and user given increment (via increment_widget)
     line_increment = increment_widget.value
     nt_spec = nt / line_increment
     nt_spec = int(nt_spec)
     cmap = cm.get_cmap('jet')
     norm = plt.Normalize(0, nt_spec - 1)
-    
-    # particle densities
-    # only every 20th timestep will be displayed
+        
+    # spectras in user given timesteps (defined via line_increment) will be displayed
     for i in range(nt_spec):
         spectra_arr_nan = copy.deepcopy(spectra_arr) 
         # deepcopy needed so that values <= 0 are masked out only in the copy for the plot (and remain for the data output)
@@ -166,5 +167,51 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     # add colorbar
     fig.colorbar(scalarmap, ax=plotaxis, orientation='vertical', label='Time [t]')
 
+    # plot 3: plot for condensation and evaporation
+    if plot_mode=='time-series':
+        axs[1,2].plot(time_array, con_ts, label = "Condensation", color='darkblue')
+        axs[1,2].plot(time_array, act_ts, label = "Activation", color='limegreen', linestyle=':')
+        axs[1,2].plot(time_array, evp_ts, label = "Evaporaton", color='brown')
+        axs[1,2].plot(time_array, dea_ts, label = "Deactivation", color='black', linestyle='--')
+        axs[1,2].set_xlabel("Time [s]")
+        axs[1,2].set_ylabel("Conversion Rates [kg$^{-1}$s$^{-1}$]")
+        axs[1,2].legend()
+        
+    elif plot_mode=='vertical profile':
+        axs[1,2].plot(con_ts, z_parcel_array, label = "Condensation", color='darkblue')
+        axs[1,2].plot(act_ts, z_parcel_array, label = "Activation", color='limegreen', linestyle=':')
+        axs[1,2].plot(evp_ts, z_parcel_array, label = "Evaporaton", color='brown')
+        axs[1,2].plot(dea_ts, z_parcel_array, label = "Deactivation", color='black', linestyle='--')
+        axs[1,2].set_xlabel("Conversion Rates [kg$^{-1}$s$^{-1}$]")
+        axs[1,2].set_ylabel("Height $z$ [m]")
+        axs[1,2].legend()
+        
+    
+    # plot 4: autoconversion and accretion
+    # compute moving average of both arrays and the time_array, z_parcel_array using built in Pandas routine
+    # set the moving window length
+    window_length = 120
+    # moving average and first window_length-1 steps deleted (which are nan)
+    aut_ts_rolling = pd.Series(aut_ts).rolling(window=window_length).mean().iloc[window_length-1:].values
+    acc_ts_rolling = pd.Series(acc_ts).rolling(window=window_length).mean().iloc[window_length-1:].values
+    time_rolling = pd.Series(time_array).rolling(window=window_length).mean().iloc[window_length-1:].values
+    z_parcel_rolling = pd.Series(z_parcel_array).rolling(window=window_length).mean().iloc[window_length-1:].values
+    
+    if plot_mode=='time-series':
+        axs[1,3].plot(time_rolling, aut_ts_rolling, label = "Autoconversion", color='purple')
+        axs[1,3].plot(time_rolling, acc_ts_rolling, label = "Accretion", color='darkorange', linestyle='--')
+        axs[1,3].set_xlabel("Time [s]")
+        axs[1,3].set_ylabel("Conversion Rates [kg$^{-1}$s$^{-1}$] \n rolling mean, window size: "+str(window_length))
+        axs[1,3].legend()
+        
+    elif plot_mode=='vertical profile':
+        axs[1,3].plot(aut_ts_rolling, z_parcel_rolling, label = "Autoconversion", color='purple')
+        axs[1,3].plot(acc_ts_rolling, z_parcel_rolling, label = "Accretion", color='darkorange', linestyle='--')
+        axs[1,3].set_xlabel("Conversion Rates [kg$^{-1}$s$^{-1}$] \n rolling mean, window size: "+str(window_length))
+        axs[1,3].set_ylabel("Height $z$ [m]")
+        axs[1,3].legend()
+    
+    
+    
     fig.tight_layout()
     fig.show()

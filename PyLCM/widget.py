@@ -75,7 +75,7 @@ def grid_modes_input():
 
    
     # col 0 for mode 1
-    gridwidget[0, 0]= widgets.Button(description='Mode #1 (plot)', disabled=False, button_style='info', tooltip='Heading', style=style)
+    gridwidget[0, 0]= widgets.Button(description='Mode #1', disabled=False, button_style='info', tooltip='Heading', style=style)
     # idea: print distribution on clicking
     # see: https://ipywidgets.readthedocs.io/en/latest/examples/Widget%20List.html#button
     gridwidget[1, 0] = widgets.BoundedFloatText(description='N_aero[cm⁻3]', min = 0.0, max = 5000.0, step = 0.1, value=1000.0, style=style)
@@ -86,7 +86,7 @@ def grid_modes_input():
     # internally take the log
 
     # col 1 for mode 2
-    gridwidget[0, 1]= widgets.Button(description='Mode #2 (plot)', disabled=False, button_style='info', tooltip='Heading')
+    gridwidget[0, 1]= widgets.Button(description='Mode #2', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 1] = widgets.BoundedFloatText(description='N_aero[cm⁻3]', min = 0.0, max = 5000.0, step = 0.1, value=800.0, style=style)
     # internally multiply this by 1E6
     gridwidget[2, 1] = widgets.BoundedFloatText(description='mu [µm]', min = 0.0, max = 5.0, step = 0.001, value=0.034, style=style)
@@ -95,7 +95,7 @@ def grid_modes_input():
     # internally take the log
 
     # col 2 for mode 3
-    gridwidget[0, 2]= widgets.Button(description='Mode #3 (plot)', disabled=False, button_style='info', tooltip='Heading')
+    gridwidget[0, 2]= widgets.Button(description='Mode #3', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 2] = widgets.BoundedFloatText(description='N_aero[cm⁻3]', min = 0.0, max = 5000.0, step = 0.01, value=0.72, style=style)
     # internally multiply this by 1E6
     gridwidget[2, 2] = widgets.BoundedFloatText(description='mu [µm]', min = 0.0, max = 5.0, step = 0.1, value=0.46, style=style)
@@ -105,7 +105,7 @@ def grid_modes_input():
 
 
     # col 3 for mode 4
-    gridwidget[0, 3]= widgets.Button(description='Mode #4 (plot)', disabled=False, button_style='info', tooltip='Heading')
+    gridwidget[0, 3]= widgets.Button(description='Mode #4', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 3] = widgets.BoundedFloatText(description='N_aero[cm⁻3]', min = 0.0, max = 5000.0, step = 0.1, value=0, style=style)
     # internally multiply this by 1E6
     gridwidget[2, 3] = widgets.BoundedFloatText(description='mu [µm]', min = 0.0, max = 5.0, step = 0.1, value=0, style=style)
@@ -122,6 +122,21 @@ def grid_modes_input():
     # display(plotbutton_widget)
     
     return gridwidget
+
+
+
+# function for kohler activation radius widget
+def kohler_settings():
+    # Adjust the style that descriptions are displayed in full length
+    style = {'description_width': 'initial'}
+    # set if activation radius uses kohler critical radius
+    kohler_widget = widgets.Checkbox(description='Set activation radius using Koehler critical radius.', value=False, style=style, layout={'width': 'max-content'})
+    # display
+    display(kohler_widget)
+     
+    return kohler_widget
+
+
 
 # function for time step widgets
 def timestep_display_mode_settings():
