@@ -1,7 +1,6 @@
 import numpy as np
 from PyLCM.parameters import *
 from PyLCM.micro_init import *
-from tqdm import tqdm
 
 #   Diffusional growth of aerosols, droplets, ice crystals
 def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts):
@@ -54,14 +53,14 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         
         if r_liq_old < r_liq:
             con_ts = con_ts +  (particle.M - M_old)
-            if r_liq >= activation_radius:
-                #Number of activated droplets
+            if (r_liq >= activation_radius) and (r_liq_old < activation_radius):
+                #Mass of activated droplets
                 act_ts = act_ts + (particle.M - M_old)
             
         else:
             evp_ts = evp_ts  +  (particle.M - M_old)
-            if r_liq < activation_radius:
-                #Number of deactivated droplets
+            if (r_liq < activation_radius) and (r_liq_old >= activation_radius):
+                #Mass of deactivated droplets
                 dea_ts = dea_ts + (particle.M - M_old)
         
         dq_liq = dq_liq + particle.M

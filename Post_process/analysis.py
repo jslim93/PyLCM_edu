@@ -39,12 +39,12 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
             
         spec = get_spec(nbins,spec,log_edges,r_liq,particle.A,air_mass_parcel)
 
-    qc = qc_mass  / air_mass_parcel
-    qr = qr_mass  / air_mass_parcel
-    qa = qa_mass  / air_mass_parcel
+    qc = qc_mass / air_mass_parcel /1e3
+    qr = qr_mass / air_mass_parcel /1e3
+    qa = qa_mass / air_mass_parcel /1e3
  
-    NC = NC  / air_mass_parcel
-    NR = NR  / air_mass_parcel
+    NC = NC / air_mass_parcel /1e6
+    NR = NR / air_mass_parcel /1e6
     
     return(spec,qa, qc,qr, NA, NC, NR)
 
@@ -56,7 +56,6 @@ def get_spec(nbins,spectra_arr,log_edges,r_liq,weight_factor,air_mass_parcel):
     bin_idx = np.searchsorted(log_edges, r_liq, side='right') - 1
     if 0 <= bin_idx < nbins:
         spectra_arr[bin_idx] += weight_factor / air_mass_parcel / (rr_spec[bin_idx] - rl_spec[bin_idx])*rm_spec[bin_idx]
-        
 
     return spectra_arr
 
@@ -72,7 +71,7 @@ def save_model_output_variables(time_array, RH_parcel_array, q_parcel_array, T_p
     
     # save to csv
     output_variables_dataframe.to_csv('Output/'+filename)
-    print('Output data written to: output/'+filename)
+    print('Output data written to: Output/'+filename)
     
 def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='dsd_array_output.csv'):
     # saves the output of the droplet size distributions to a csv-file, filename can be adjusted manually
@@ -94,4 +93,4 @@ def save_model_output_dsd(spectra_arr, rm_spec, rl_spec, rr_spec, nt, filename='
 
     # save to csv
     dsd_dataframe.to_csv('Output/'+filename)
-    print('Output data of droplet size distribution written to: output/'+filename)   
+    print('Output data of droplet size distribution written to: Output/'+filename)   
