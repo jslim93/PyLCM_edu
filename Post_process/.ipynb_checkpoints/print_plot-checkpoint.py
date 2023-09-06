@@ -173,7 +173,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         axs[1,2].plot(time_array, evp_ts, label = "Evaporaton", color='brown')
         #axs[1,2].plot(time_array, dea_ts, label = "Deactivation", color='black', linestyle='--')
         axs[1,2].set_xlabel("Time [s]")
-        axs[1,2].set_ylabel("Conversion Rates [kg$^{-1}$s$^{-1}$]")
+        axs[1,2].set_ylabel("Conversion Rates [g kg$^{-1}$s$^{-1}$]")
         axs[1,2].legend()
         
     elif plot_mode=='vertical profile':
@@ -181,7 +181,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         #axs[1,2].plot(act_ts, z_parcel_array, label = "Activation", color='limegreen', linestyle=':')
         axs[1,2].plot(evp_ts, z_parcel_array, label = "Evaporaton", color='brown')
         #axs[1,2].plot(dea_ts, z_parcel_array, label = "Deactivation", color='black', linestyle='--')
-        axs[1,2].set_xlabel("Conversion Rates [kg$^{-1}$s$^{-1}$]")
+        axs[1,2].set_xlabel("Conversion Rates [g kg$^{-1}$s$^{-1}$]")
         axs[1,2].set_ylabel("Height $z$ [m]")
         axs[1,2].legend()
         
@@ -200,13 +200,13 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         axs[1,3].plot(time_rolling, aut_ts_rolling, label = "Autoconversion", color='purple')
         axs[1,3].plot(time_rolling, acc_ts_rolling, label = "Accretion", color='darkorange', linestyle='--')
         axs[1,3].set_xlabel("Time [s]")
-        axs[1,3].set_ylabel("Conversion Rates [kg$^{-1}$s$^{-1}$] \n rolling mean, window size: "+str(window_length))
+        axs[1,3].set_ylabel("Conversion Rates [g kg$^{-1}$s$^{-1}$] \n rolling mean, window size: "+str(window_length))
         axs[1,3].legend()
         
     elif plot_mode=='vertical profile':
         axs[1,3].plot(aut_ts_rolling, z_parcel_rolling, label = "Autoconversion", color='purple')
         axs[1,3].plot(acc_ts_rolling, z_parcel_rolling, label = "Accretion", color='darkorange', linestyle='--')
-        axs[1,3].set_xlabel("Conversion Rates [kg$^{-1}$s$^{-1}$] \n rolling mean, window size: "+str(window_length))
+        axs[1,3].set_xlabel("Conversion Rates [g kg$^{-1}$s$^{-1}$] \n rolling mean, window size: "+str(window_length))
         axs[1,3].set_ylabel("Height $z$ [m]")
         axs[1,3].legend()
     

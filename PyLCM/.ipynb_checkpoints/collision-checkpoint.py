@@ -75,22 +75,28 @@ def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
     xs_int = ptcl_int2.Ns / ptcl_int2.A
     
     # Update of M, A (water mass and particle number)
+    
+    #Increase of water mass due to collision
     ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int
+    #Increase of Aerosol mass due to collision 
     ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int
     
-    ptcl_int2.A = ptcl_int2.A - ptcl_int1.A
-    ptcl_int2.M = ptcl_int2.M - ptcl_int1.A * x_int
-    ptcl_int2.Ns = ptcl_int2.Ns + ptcl_int1.A * xs_int
+    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A
+    ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int
+    
+    #Decrease of Aerosol mass due to collision 
+    ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
-    large_drop_size = particle1.M / particle1.A
-    small_drop_size = particle2.M / particle2.A
+    
+    large_drop_size = max(particle1.M / particle1.A, particle2.M / particle2.A)
+    small_drop_size = min(particle1.M / particle1.A, particle2.M / particle2.A)
     
     #Accretion mass
-    if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
-        acc_ts += ptcl_int1.A * x_int
+    if (large_drop_size >= mass_crit) and (small_drop_size < mass_crit) :
+        acc_ts += ptcl_int1.A * small_drop_size
     #Autoconversion mass
-    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
+    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit) and (small_drop_size + large_drop_size >= mass_crit):
         aut_ts += ptcl_int1.A * (large_drop_size + small_drop_size)
     
     # The superdroplet with the smaller A will be indexed particle1 in the following (l. 51 in the Fortran)
@@ -106,10 +112,10 @@ def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
 def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
-    large_drop_size = particle1.M / particle1.A
-    small_drop_size = particle2.M / particle2.A
+    large_drop_size = max(particle1.M / particle1.A, particle2.M / particle2.A)
+    small_drop_size = min(particle1.M / particle1.A, particle2.M / particle2.A)
     #Autoconversion mass
-    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit):
+    if (large_drop_size < mass_crit) and (small_drop_size < mass_crit) and (small_drop_size + large_drop_size >= mass_crit):
         aut_ts += ptcl_int1.M + ptcl_int2.M
     
     ptcl_int1.M = ptcl_int1.M + ptcl_int2.M
@@ -248,7 +254,9 @@ def E_H80(r1, r2):
     else:
         qq = (rq - rat[iq-1]) / (rat[iq] - rat[iq-1])
         E = min((1.0 - qq) * ecoll[14, iq-1] + qq * ecoll[14, iq], 1.0)
-
+    
+    if( E < 1.0E-20 ):  
+        E = 0.0
     E = max(E, 0.0)
 
     return E

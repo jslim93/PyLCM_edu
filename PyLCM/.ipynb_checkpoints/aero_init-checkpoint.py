@@ -7,7 +7,6 @@ from Post_process.print_plot import *
 
 from scipy.stats import lognorm
 
-
 def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero):
     
     #Aerosol inititial radius

@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from PyLCM.parameters import *
 from PyLCM.micro_init import *
 
@@ -130,6 +131,11 @@ def radius_liquid_euler_py(r_ini, dt_int, r0, G_pre, supersat, ventilation_effec
         dfdr2 = 1.0 - dt_eul * d2r2dtdr2
         return r_eul**2 - r_ini**2 - dt_eul * dr2dt
 
-    r_eul = newton(equation, r_ini, maxiter=1000)
-
+    try:
+        r_eul = newton(equation, r_ini, maxiter=5000)
+        return r_eul
+    except RuntimeError:
+        print("Newton-Raphson method did not converge. Try to decrease dt, w or increase n_particles")
+        sys.exit(1)  # Stop the program with an exit code of 1
+    
     return r_eul
