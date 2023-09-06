@@ -1,8 +1,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from PyLCM.parameters import *
 import random
 
+from PyLCM.parameters import *
+from PyLCM.parameters import *
+from PyLCM.parcel import *
+from PyLCM.condensation import *
+from PyLCM.aero_init import *
 
 def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget):
     # reads the values of the model steering parameters out of the widgets

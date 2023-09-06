@@ -39,9 +39,9 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
             
         spec = get_spec(nbins,spec,log_edges,r_liq,particle.A,air_mass_parcel)
 
-    qc = qc_mass / air_mass_parcel /1e3
-    qr = qr_mass / air_mass_parcel /1e3
-    qa = qa_mass / air_mass_parcel /1e3
+    qc = qc_mass / air_mass_parcel *1e3
+    qr = qr_mass / air_mass_parcel *1e3
+    qa = qa_mass / air_mass_parcel *1e3
     
     NA = NA / air_mass_parcel /1e6
     NC = NC / air_mass_parcel /1e6
