@@ -53,7 +53,7 @@ def ascending_mode_input():
 def aero_mode_input():
     # widgets for aerosol initialisation
     mode_aero_init_widget = widgets.ToggleButtons(options=['weighting_factor', 'random'], value='weighting_factor', layout={'width': 'max-content'}, disabled=False)
-
+    print("\n")
     # Display widgets
     display('Aerosol initialisation mode: ', mode_aero_init_widget)
     
@@ -73,7 +73,6 @@ def grid_modes_input():
     # Adjust the style that descriptions are displayed in full length
     style = {'description_width': 'initial'}
 
-   
     # col 0 for mode 1
     gridwidget[0, 0]= widgets.Button(description='Mode #1', disabled=False, button_style='info', tooltip='Heading', style=style)
     # idea: print distribution on clicking
@@ -130,9 +129,9 @@ def kohler_settings():
     # Adjust the style that descriptions are displayed in full length
     style = {'description_width': 'initial'}
     # set if activation radius uses kohler critical radius
-    kohler_widget = widgets.Checkbox(description='Set activation radius using Koehler critical radius.', value=False, style=style, layout={'width': 'max-content'})
+    kohler_widget = widgets.Checkbox(description='Koehler critical radius', value=False, style=style, layout={'width': 'max-content'})
     # display
-    display(kohler_widget)
+    display(r"Set activation radius using Koehler critical radius, otherwise activation radius is 1 µm",kohler_widget)
      
     return kohler_widget
 
