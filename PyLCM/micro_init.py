@@ -110,5 +110,6 @@ class particles:
         self.id     = n
         self.M      = 1.0 # mass
         self.A      = 1.0 # weighting factor
+        self.Ns     = 1.0 # Aerosol mass
     def shuffle(particles_list):
         random.shuffle(particles_list)
