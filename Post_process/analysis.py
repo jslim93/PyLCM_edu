@@ -11,6 +11,7 @@ from PyLCM.parcel import *
 from PyLCM.condensation import *
 from PyLCM.collision import *
 
+ 
 def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     nbins = nbins - 1 # number of bins are 1 smaller than number of edges.
     
@@ -50,9 +51,6 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     return(spec,qa, qc,qr, NA, NC, NR)
 
 def get_spec(nbins,spectra_arr,log_edges,r_liq,weight_factor,air_mass_parcel):
-    from PyLCM.parameters import  rr_spec
-    from PyLCM.parameters import  rl_spec
-    from PyLCM.parameters import  rm_spec
     
     bin_idx = np.searchsorted(log_edges, r_liq, side='right') - 1
     if 0 <= bin_idx < nbins:
