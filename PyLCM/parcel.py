@@ -1,5 +1,5 @@
 from PyLCM.parameters import *
-from PyLCM.micro_init import *
+from PyLCM.micro_particle import *
 from PyLCM.condensation import *
 import numpy as np
 
