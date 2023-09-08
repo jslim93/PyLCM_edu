@@ -6,7 +6,7 @@ import time
 import pylab as pl
 
 from PyLCM.parameters import *
-from PyLCM.micro_init import *
+from PyLCM.micro_particle import *
 from PyLCM.aero_init import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *

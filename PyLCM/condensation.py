@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from numba import jit
 from PyLCM.parameters import *
-from PyLCM.micro_init import *
+from PyLCM.micro_particle import *
 from scipy.optimize import newton
 #   Diffusional growth of aerosols, droplets, ice crystals
 

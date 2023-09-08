@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from PyLCM.micro_init import *
+from PyLCM.micro_particle import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 from tqdm import tqdm
