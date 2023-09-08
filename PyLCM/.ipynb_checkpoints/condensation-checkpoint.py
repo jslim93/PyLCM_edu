@@ -1,9 +1,12 @@
 import numpy as np
 import sys
+from numba import jit
 from PyLCM.parameters import *
 from PyLCM.micro_init import *
-
+from scipy.optimize import newton
 #   Diffusional growth of aerosols, droplets, ice crystals
+
+    
 def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts):
     
     dq_liq = 0
@@ -114,7 +117,7 @@ def sigma_air_liq(tabs):
     
     return(sigma_air_liq)
 
-from scipy.optimize import newton
+
 def radius_liquid_euler_py(r_ini, dt_int, r0, G_pre, supersat, ventilation_effect, afactor, bfactor, r_aero, D_pre, radiation):
     
     def equation(r_eul):
@@ -135,7 +138,6 @@ def radius_liquid_euler_py(r_ini, dt_int, r0, G_pre, supersat, ventilation_effec
         r_eul = newton(equation, r_ini, maxiter=5000)
         return r_eul
     except RuntimeError:
-        print("Newton-Raphson method did not converge. Try to decrease dt, w or increase n_particles")
-        sys.exit(1)  # Stop the program with an exit code of 1
+        print("ERROR: Newton-Raphson method did not converge. Try to decrease dt, w or increase n_particles")
     
     return r_eul
