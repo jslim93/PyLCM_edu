@@ -50,7 +50,7 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
     
 def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts):
     # Core function of the post processing "plot" section which provides 6 subplots to all main model variables
-    # Initialisation of subplot layout
+    # Initialization of subplot layout
     fig, axs = plt.subplots(2, 4, sharex=False, sharey=False, figsize=(18,8))
     
     time_array = np.arange(nt+1)*dt
