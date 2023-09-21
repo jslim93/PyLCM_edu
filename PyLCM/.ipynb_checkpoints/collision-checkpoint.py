@@ -5,7 +5,6 @@ from PyLCM.parcel import *
 from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
-
  
 def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts):
     
@@ -60,7 +59,6 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
     
     return particles_list, acc_ts, aut_ts
 
-@jit(nopython=True) 
 def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
     
     # _int1: gains total individual mass
@@ -141,7 +139,6 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
 
 import math
 import numpy as np
-@jit(nopython=True) 
 def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl):
     # Constants
     pi = math.pi
