@@ -72,6 +72,17 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     # Aerosol initialization
     T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero)
     
+    # Initialize arrays for mean radii and standard deviation
+    r_liq_avg_array = np.zeros(nt+1)
+    r_liq_std_array = np.zeros(nt+1)
+    # Variant for mean radii and std. dev. of cloud+rain droplets only
+    rc_liq_avg_array = np.zeros(nt+1)
+    rc_liq_std_array = np.zeros(nt+1)
+    
+    # Initialize array for all radii of particles for plot of their time evolution
+    particles_array = np.zeros((nt+1, len(particles_list)))
+    particles_c_array = np.zeros((nt+1, len(particles_list))) # Only cloud and rain droplets here
+    
     # Parcel routine
     # Initalize spectrum output
     spectra_arr = np.zeros((nt+1,len(rm_spec)))
@@ -80,7 +91,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     con_ts, act_ts, evp_ts, dea_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     acc_ts, aut_ts = np.zeros(nt+1),np.zeros(nt+1)
-    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
+    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0], r_liq_avg_array[0], r_liq_std_array[0], particles_array[0], rc_liq_avg_array[0], rc_liq_std_array[0], particles_c_array[0] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
     
     
     # Initialization of arrays for T_parcel, RH_parcel, q_parcel and z_parcel. 
@@ -107,7 +118,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     # Read in selected display mode (options are: 'text_fast' or 'graphics')
     display_mode = mode_displaytype_widget.value
     
-    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts
+    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, r_liq_avg_array, r_liq_std_array, particles_array, rc_liq_avg_array, rc_liq_std_array, particles_c_array
 
 
 
