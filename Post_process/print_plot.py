@@ -196,6 +196,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         #axs[1,2].plot(dea_ts, z_parcel_array, label = "Deactivation", color='black', linestyle='--')
         axs[1,2].set_xlabel("Conversion Rates (g kg$^{-1}$s$^{-1}$)")
         axs[1,2].set_ylabel("Height $z$ (m)")
+        axs[1,2].tick_params(axis='x', labelrotation=45)
         axs[1,2].legend()
         
     
