@@ -7,7 +7,7 @@ from Post_process.print_plot import *
 
 from scipy.stats import lognorm
 
-def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget):
+def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget, switch_kappa_koehler):
     # Data of the model steering parameters is being read out from the widgets.
     # Values necessary for the model initialization will be returned.
     
@@ -39,6 +39,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     N_aero     = [gridwidget[1, 0].value*1.0E6, gridwidget[1, 1].value*1.0E6, gridwidget[1, 2].value*1.0E6, gridwidget[1, 3].value*1.0E6]
     mu_aero    = [gridwidget[2, 0].value*1.0E-6, gridwidget[2, 1].value*1.0E-6, gridwidget[2, 2].value*1.0E-6, gridwidget[2, 3].value*1.0E-6]
     sigma_aero = [gridwidget[3, 0].value, gridwidget[3, 1].value, gridwidget[3, 2].value, gridwidget[3, 3].value]
+    k_aero     = [gridwidget[4, 0].value, gridwidget[4, 1].value, gridwidget[4, 2].value, gridwidget[4, 3].value]
     
     # Truncate the array before taking the log if one of the N_aero_i is 0, which means that this mode will no longer be used.
     N_aero_array = np.array(N_aero) # First: Convert into np.array
@@ -70,11 +71,12 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
     
     # Aerosol initialization
-    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero)
+    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero, k_aero, switch_kappa_koehler)
     
     # Parcel routine
     # Initalize spectrum output
     spectra_arr = np.zeros((nt+1,len(rm_spec)))
+    
     # Initialization of arrays for time series output
     qa_ts,qc_ts,qr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
@@ -89,7 +91,6 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     RH_parcel_array = np.zeros(nt+1)
     q_parcel_array  = np.zeros(nt+1)
     z_parcel_array  = np.zeros(nt+1)
-
 
     # Inserting the initialization values at the 0th position of the arrays.
     T_parcel_array[0]  = T_parcel
@@ -110,8 +111,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts
 
 
-
-def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero):
+def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero, k_aero, switch_kappa_koehler):
     # Aerosol initialization
     
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
@@ -130,67 +130,90 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_ae
     # Computation of aerosol inititial radius
     radius = np.logspace(np.log10(1.0E-9), np.log10(1.0E-6), n_ptcl)
     dlogr   = ( np.log(2.0E-6) - np.log(1.0E-9) ) / n_ptcl
-        
-    # Initialize particle (aerosol particles)
-    for i in range(n_ptcl):
-        particle = particles(i)
-        
-        # RNG (random number generator) method to generate distribution where all particles represent the same number of droplets
-        if mode_aero_init == "random":
-            mode_count = len(N_aero)
+    
+    # Initialization of an array for n_particles of the 4 modes
+    mode_count = len(N_aero)
+    n_particles_mode_array = np.zeros(mode_count) 
+    
+    # Assigning the number of droplets to the 4 modes according to specified n_particles and N_aero[i]
+    # (The result is now no longer integer!)
+    n_particles_mode_array = n_ptcl * N_aero / np.sum(N_aero)
 
-            n_particles_mode_array = np.zeros(mode_count) # Initialization of an array for n_particles of the 4 modes
-            
-            # Assigning the number of droplets to the 4 modes according to specified n_particles and N_aero[i]
-            # (The result is now no longer integer!)
+    # Truncate particle modes to integer and sum them up
+    n_particles_mode_int = n_particles_mode_array.astype(int)
+    n_difference = int(np.round(np.sum(n_particles_mode_array) - np.sum(n_particles_mode_int)))
 
-            for j in range(mode_count):
-                n_particles_mode_array[j] = N_aero[j] / np.sum(N_aero) * n_ptcl
+    # Adjust the first mode to account for truncation
+    n_particles_mode_int[0] += n_difference
+
+    ## New initialization for the hygroscopicity parameter
+    # Compute the indices for the modes
+    mode_indices = np.cumsum(n_particles_mode_int)   
+    
+    # RNG (random number generator) method to generate distribution where all particles represent the same number of droplets
+    if mode_aero_init == "random":
+
+        # Generate log-normal distribution for the modes
+        temp_arr = []
+        for k in range(mode_count):
+            temp_arr.extend(np.random.lognormal(mu_aero[k], sigma_aero[k], n_particles_mode_int[k]))
+
+        aero_r_seed = np.array(temp_arr)
+
+        # Initialize particle (aerosol particles)
+        for i in range(n_ptcl):
+            particle = particles(i)
             
-            # Truncate particle modes to integer and sum them up
-            n_particles_mode_int = n_particles_mode_array.astype(int)
-            n_particles_intsum = np.sum(n_particles_mode_int) # Array with integer values of particle numbers
-            
-            # Sum of particles of different modes (float)
-            n_particles_floatsum = np.sum(n_particles_mode_array)
-            
-            # Compare the integer and the float sum
-            n_difference = n_particles_floatsum - n_particles_intsum
-            
-            # Add the missing droplets (or remove the droplets which are too many) to the first mode
-            n_particles_mode_int[0] = int(n_particles_mode_int[0] + n_difference)
-            
-            # Generate log-normal distribution for the modes
-            for k in range(mode_count):
-                if k == 0:
-                    temp_arr = np.random.lognormal(mu_aero[0], sigma_aero[0], n_particles_mode_int[0])
-                else:
-                    temp_arr  =  np.concatenate((temp_arr, np.random.lognormal(mu_aero[k], sigma_aero[k], n_particles_mode_int[k])))
-            aero_r_seed = temp_arr
-                       
+            if switch_kappa_koehler:
+                # Determine the mode based on the index 'i' and set the appropriate kappa
+                for idx in range(mode_count):
+                    lower_bound = mode_indices[idx-1] if idx > 0 else 0
+                    upper_bound = mode_indices[idx]
+
+                    if lower_bound <= i < upper_bound:
+                        particle.kappa = k_aero[idx]
+                        break
+                        
             particle.A = air_mass_parcel * np.sum(N_aero)/n_ptcl
             particle.Ns = aero_r_seed[i]**3 * 4./3. * np.pi * rho_aero * particle.A
-        
-        # Bin-like method to generate distribution where each particle represents different number of droplets
-        elif mode_aero_init == "weighting_factor":
+
+            if particle.Ns > min_mass_aero:
+                r_aero = (particle.Ns/ ( particle.A * 4.0 / 3.0 * pi * rho_aero ) )**(1.0/3.0)
+
+                particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero,switch_kappa_koehler,particle.kappa))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
+            else: 
+                particle.M = 0.0
+                
+            #Put initialized particle in a particles_list 
+            particles_list.append(particle)
             
-            # Calculate the PDF (probability density function) of the overlapping log-normal distributions
-            pdf_sum = np.zeros_like(radius)
-            for N, mu, sigma in zip(N_aero, mu_aero, sigma_aero):
-                pdf = lognormal_pdf(radius, mu,sigma)
-                pdf_sum += N * pdf
+
+    # Bin-like method to generate distribution where each particle represents different number of droplets
+    elif mode_aero_init == "weighting_factor":
+        
+        # Calculate the PDF (probability density function) of the overlapping log-normal distributions
+        pdf_sum = np.zeros_like(radius)
+
+        for N, mu, sigma in zip(N_aero, mu_aero, sigma_aero):
+            pdf = lognormal_pdf(radius, mu,sigma)
+            pdf_sum += N * pdf
+            
+        # Initialize particle (aerosol particles)
+        for i in range(n_ptcl):
+            particle = particles(i)
             # Define the range of values to evaluate the PDF
             particle.A = air_mass_parcel * pdf_sum[i] * dlogr * radius[i]
             particle.Ns = radius[i]**3 * 4./3. * np.pi * rho_aero * particle.A
+            particle.kappa = 0.5
 
-        particles_list.append(particle)
-
-        if particle.Ns > min_mass_aero:
-            r_aero = (particle.Ns/ ( particle.A * 4.0 / 3.0 * pi * rho_aero ) )**(1.0/3.0)
-
-            particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
-        else: 
-            particle.M = 0.0
+            if particle.Ns > min_mass_aero:
+                r_aero = (particle.Ns/ ( particle.A * 4.0 / 3.0 * pi * rho_aero ) )**(1.0/3.0)
+                particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero,switch_kappa_koehler,particle.kappa))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
+            else: 
+                particle.M = 0.0
+            
+            #Put initialized particle in a particles_list 
+            particles_list.append(particle)
 
     dql_liq = (np.sum([p.M for p in particles_list]) - dql_liq)/air_mass_parcel
     T_parcel = T_parcel + dql_liq * l_v / cp
@@ -215,3 +238,24 @@ def lognormal_pdf(x, mu, sigma):
     exponent = -((np.log(x) - mu)**2) / (2 * sigma**2)
     pdf_value = coefficient * np.exp(exponent)
     return pdf_value
+
+def r_equi(S,T,r_aerosol, rho_aero, switch_kappa_koehler, kappa):
+    # Limit supersaturation since higher saturations cause numerical issues.
+    # Additionally, saturated or supersaturated conditions do not yield a unique solution.
+    
+    S_internal = min( S, -0.0001 ) # Higher saturations cause errors
+    
+    afactor = 2.0 * sigma_air_liq(T) / ( rho_liq * rv * T ) # Curvature effect
+    if switch_kappa_koehler:
+        bfactor = kappa
+    else:
+        bfactor = vanthoff_aero * rho_aero * molecular_weight_water / (rho_liq * molecular_weight_aero) # Solute effect
+        
+    # Iterative solver ( 0 = S - A / r + B / r^3 => r = ( B / ( A / r - S ) )^(1/3) )
+    r_equi_0 = 1.0
+    r_equi   = 1.0E-6
+    
+    while ( abs( ( r_equi - r_equi_0 ) / r_equi_0 ) > 1.0E-20 ):
+        r_equi_0 = r_equi
+        r_equi   = ( ( bfactor * r_aerosol**3 ) / ( afactor / r_equi - S_internal ) )**(1.0/3.0)
+    return(r_equi)

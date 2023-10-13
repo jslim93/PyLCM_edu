@@ -17,7 +17,7 @@ from PyLCM.widget import *
 from Post_process.analysis import *
 from Post_process.print_plot import *
 
-def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, z_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget, kohler_activation_radius):    
+def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, z_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget, kohler_activation_radius, switch_kappa_koehler):    
 
     
     # Function call of the complete model initialization (model_init) (aerosol initialization included)
@@ -27,7 +27,7 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
     z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts = model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, \
                                 n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, \
                                 max_z_widget, mode_aero_init_widget, gridwidget, \
-                                ascending_mode_widget, mode_displaytype_widget)  
+                                ascending_mode_widget, mode_displaytype_widget,switch_kappa_koehler)  
 
 ################################
     # Timestep routine
@@ -44,7 +44,7 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
         # Condensational Growth
         dq_liq = 0.0
         if do_condensation:
-            particles_list, T_parcel, q_parcel, S_lst, con_ts[t+1], act_ts[t+1], evp_ts[t+1], dea_ts[t+1] = drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts[t+1], act_ts[t+1], evp_ts[t+1], dea_ts[t+1])
+            particles_list, T_parcel, q_parcel, S_lst, con_ts[t+1], act_ts[t+1], evp_ts[t+1], dea_ts[t+1] = drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts[t+1], act_ts[t+1], evp_ts[t+1], dea_ts[t+1],switch_kappa_koehler)
             
             # Convert mass output to per mass per sec.
             con_ts[t+1]  = 1e3 * con_ts[t+1] / air_mass_parcel / dt
