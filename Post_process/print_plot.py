@@ -14,7 +14,7 @@ from PyLCM.collision import *
 from Post_process.analysis import *
 
 
-def spec_plot(ax, spectra_arr, nt,dt, rm_spec):
+def spec_plot(ax, spectra_arr, nt,dt, rm_spec, rc_liq_avg_array, time_array):
     # Function for the DSD (droplet size distribution) plot
     # Clear the previous plot
     clear_output(wait=True)
@@ -27,12 +27,21 @@ def spec_plot(ax, spectra_arr, nt,dt, rm_spec):
 
     # Create a logarithmic colorbar
     cbar = plt.colorbar(contour, ax=ax, format="%.0e")
+    
+    # Add label to the colorbar
+    cbar.ax.set_title('dN/dlog(R) (mg$^{-1}$)', fontsize = 10, pad = 10)
+    
+    # Add cloud, rain mean droplet size above DSD
+    ax.plot(time_array, rc_liq_avg_array*1e6 , color='black', linewidth=2, label='Mean radius $\overline{r}$ (µm) \n (cloud & rain droplets)')
 
     # Add labels and title
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Radius (µm)")
-    ax.set_title("DSD Time Evolution")
+    ax.set_ylabel("Radius $r$ (µm)")
+    ax.set_title("DSD Time Evolution", loc='left', pad = 10)
     ax.set_ylim([1e-2,1e4])    
+    
+    # Add legend
+    ax.legend()
     
     
 def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
@@ -48,7 +57,7 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
     print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.3f}  {:<8.3f}  {:<8.3f}  {:<8.2f}  {:<8.2f}  {:<8.2f}".format(
         (t+1) * dt, z_parcel, T_parcel, 1e3 * q_parcel, 100* rh, qc,  qr, na , nc , nr))
     
-def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts):
+def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, rc_liq_avg_array):
     # Core function of the post processing "plot" section which provides 6 subplots to all main model variables
     # Initialization of subplot layout
     fig, axs = plt.subplots(2, 4, sharex=False, sharey=False, figsize=(18,8))
@@ -135,7 +144,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
 
     # Second row
     # Plot 1: DSD (droplet size distribution)
-    spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,rm_spec)
+    spec_plot(axs[1,0],spectra_arr/1e6, nt,dt,rm_spec, rc_liq_avg_array, time_array)
     
     # Plot 2: Particle densities
     # Calculate the number of drawn spectra (nt_spec) via number of timesteps (nt) of the model and user given increment (via increment_widget)
@@ -166,8 +175,9 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     norm2 = plt.Normalize(vmin=0, vmax=np.max((nt_spec*line_increment-line_increment)*dt))
     # Produce mappable object
     scalarmap = plt.cm.ScalarMappable(norm=norm2, cmap=cmap_spectra)
-    # Add colorbar
-    fig.colorbar(scalarmap, ax=plotaxis, orientation='vertical', label='Time [t]')
+    # Add colorbar and colorbar label
+    clb2 = fig.colorbar(scalarmap, ax=plotaxis, orientation='vertical')
+    clb2.ax.set_title('Time (s)', fontsize = 10, pad = 10)
 
     # Plot 3: Plot for condensation and evaporation (Conversion rates)
     if plot_mode=='time-series':
@@ -186,6 +196,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         #axs[1,2].plot(dea_ts, z_parcel_array, label = "Deactivation", color='black', linestyle='--')
         axs[1,2].set_xlabel("Conversion Rates (g kg$^{-1}$s$^{-1}$)")
         axs[1,2].set_ylabel("Height $z$ (m)")
+        axs[1,2].tick_params(axis='x', labelrotation=45)
         axs[1,2].legend()
         
     

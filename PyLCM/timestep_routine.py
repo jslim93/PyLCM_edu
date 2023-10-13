@@ -24,7 +24,7 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
     P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, \
     max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, \
     qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, \
-    z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts = model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, \
+    z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, r_liq_avg_array, r_liq_std_array, particles_array, rc_liq_avg_array, rc_liq_std_array, particles_c_array = model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, \
                                 n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, \
                                 max_z_widget, mode_aero_init_widget, gridwidget, \
                                 ascending_mode_widget, mode_displaytype_widget,switch_kappa_koehler)  
@@ -32,6 +32,10 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
 ################################
     # Timestep routine
 ################################
+
+    # Create array for the drop radii evolution
+    
+
     if display_mode == 'graphics':
         # Initialization of animation
         figure_item = animation_init(dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array)
@@ -60,7 +64,7 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
             acc_ts[t+1]  = 1e3 * acc_ts[t+1] / air_mass_parcel / dt
             aut_ts[t+1]  = 1e3 * aut_ts[t+1] / air_mass_parcel / dt
         # Analysis
-        spectra_arr[t+1],qa_ts[t+1], qc_ts[t+1],qr_ts[t+1], na_ts[t+1], nc_ts[t+1], nr_ts[t+1] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
+        spectra_arr[t+1],qa_ts[t+1], qc_ts[t+1],qr_ts[t+1], na_ts[t+1], nc_ts[t+1], nr_ts[t+1], r_liq_avg_array[t+1], r_liq_std_array[t+1], particles_array[t+1], rc_liq_avg_array[t+1], rc_liq_std_array[t+1], particles_c_array[t+1] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
         RH_parcel = (q_parcel * P_parcel / (q_parcel + r_a / rv)) / esatw( T_parcel ) 
         
         # Saving values of T_parcel, RH_parcel, q_parcel, z_parcel for every timestep (needed for plots)
@@ -83,5 +87,5 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
                 animation_call(figure_item, time_array, t, dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array)
             
 
-    return nt, dt, time_array, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, qa_ts,qc_ts,qr_ts, na_ts,nc_ts,nr_ts, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts
+    return nt, dt, time_array, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, qa_ts,qc_ts,qr_ts, na_ts,nc_ts,nr_ts, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, r_liq_avg_array, r_liq_std_array, particles_array, rc_liq_avg_array, rc_liq_std_array, particles_c_array
     
