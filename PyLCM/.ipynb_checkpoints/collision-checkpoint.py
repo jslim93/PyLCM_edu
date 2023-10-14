@@ -6,8 +6,8 @@ from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
  
-def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts):
-    
+def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel):
+
     #shuffle the particle list for LSM (linear sampling method)
     particles.shuffle(particles_list)
     nptcl = len(particles_list)
@@ -31,7 +31,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         check_collection = False
         
         # Find out what kind of interaction (or none) takes place
-        check_final, check_collection = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl)
+        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl)
 
         if check_final:
             
@@ -41,14 +41,31 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
                 #add acc_ts and aut_ts for same weight factor
                 particle1, particle2, acc_ts, aut_ts = same_weights_update(particle1, particle2, acc_ts, aut_ts)
 
-            # Each droplet of the super-droplet with the smaller weighting factor collects one droplet of the super-droplet with the larger weighting factor
+            # Each droplet of the super-droplet with the smaller weighting factor collects 
+            # one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
                 particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2,  acc_ts, aut_ts)
-
-# Merge the lists at the end of the loop
+        
+        #Change droplet vertical location by subtracting their terminal velocity
+        if sedi_removal:
+            if z_parcel < max_z: 
+                dz_ptcl = w_parcel * dt
+            else:
+                dz_ptcl = 0.0
+            particle1.z = particle1.z - (v_r1 * dt) + dz_ptcl
+            particle2.z = particle2.z - (v_r2 * dt) + dz_ptcl
+        #Remove particles at the surface
+            if particle1.z <= 0.0:
+                precip_ts += particle1.M
+                particle1.A = 0
+            if particle2.z <= 0.0:
+                precip_ts += particle2.M
+                particle2.A = 0
+                
+    # Merge the lists at the end of the loop
     particles_list = particle_list1 + particle_list2
 
-#remove particle with 0 weighting factor
+    # Remove particle with 0 weighting factor
     if min(particles_list, key=lambda particle: particle.A).A <= 0:
         particles_list = [particle for particle in particles_list if particle.A > 0]
 
@@ -56,13 +73,12 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
     #    print('+++ Collision time step is too long. +++')
     #    collision_timestep_error = False
     
-    return particles_list, acc_ts, aut_ts
+    return particles_list, acc_ts, aut_ts, precip_ts
 
 def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
     
     # _int1: gains total individual mass
     # _int2: loses total mass, constant individual mass
-    # (check if this holds also in the python version, Fortran mod_collection l. 434)
     if particle1.A < particle2.A:
         ptcl_int1 = particle1
         ptcl_int2 = particle2
@@ -73,17 +89,22 @@ def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
     x_int = ptcl_int2.M / ptcl_int2.A
     xs_int = ptcl_int2.Ns / ptcl_int2.A
     
+    #Droplet volume for kappa collision estimation
+    v_ptcl1 = ptcl_int1.M / ptcl_int1.A / rho_liq
+    v_ptcl2 = ptcl_int2.M / ptcl_int2.A / rho_liq
+    
     # Update of M, A (water mass and particle number)
     
     #Increase of water mass due to collision
     ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int
     #Increase of Aerosol mass due to collision 
     ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int
+    #Update volume-mean averaged kappa
+    ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
     
+    #Decrease of number, aerosol and water mass due to collision 
     ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A
     ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int
-    
-    #Decrease of Aerosol mass due to collision 
     ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
@@ -129,15 +150,14 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
 
     ptcl_int1.M  = ptcl_int1.M  + ptcl_int2.M
     ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int2.Ns
-    ptcl_int1.A  = ptcl_int1.A  + ptcl_int2.A
+    ptcl_int1.A  = ptcl_int1.A  * 0.5
     
     ptcl_int2.M  = ptcl_int1.M  * 0.5
     ptcl_int2.Ns = ptcl_int1.Ns * 0.5
-    ptcl_int2.A  = ptcl_int1.A  * 0.5
+    ptcl_int2.A  = ptcl_int2.A  * 0.5
     
     ptcl_int1.M  = ptcl_int2.M 
     ptcl_int1.Ns = ptcl_int2.Ns 
-    ptcl_int1.A  = ptcl_int2.A
     
     #Update volume-mean averaged kappa
     ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
@@ -166,11 +186,11 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
     
     # Coalescence
     #if particle1.micro_type > 0 and particle2.micro_type > 0:
-    R_m = (particle2.M / particle2.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
     R_n = (particle1.M / particle1.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
+    R_m = (particle2.M / particle2.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
     
-    v_r1 = ws_drops_beard(R_m, rho_parcel, rho_liq, p_env, T_parcel)
-    v_r2 = ws_drops_beard(R_n, rho_parcel, rho_liq, p_env, T_parcel)
+    v_r1 = ws_drops_beard(R_n, rho_parcel, rho_liq, p_env, T_parcel)
+    v_r2 = ws_drops_beard(R_m, rho_parcel, rho_liq, p_env, T_parcel)
     
     v_r = abs(v_r1 - v_r2)
 
@@ -189,7 +209,7 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
      #IF ( p_crit .GT. 1.0 )  THEN
      #     collision_timestep_error = .TRUE.
      #  ENDIF
-    return check_final, check_collection
+    return check_final, check_collection, v_r1, v_r2
 
 
 def E_H80(r1, r2):

@@ -10,31 +10,32 @@ def model_steering_input():
     style = {'description_width': 'initial'}
     
     # Create the widgets for the variables
-    dt_widget      = widgets.BoundedFloatText(description='dt (s):', min = 0.0001, max = 5.0, value = 0.5, style=style)
+    dt_widget      = widgets.BoundedFloatText(description='dt (s):', min = 0.0001, max = 5.0, value = 1.0, style=style)
     nt_widget      = widgets.IntText(description='nt:', value = 3600, style=style)
 
-    Condensation_widget = widgets.Checkbox(description='Condensation:', value=True, style=style)
-    Collision_widget = widgets.Checkbox(description='Collision:', value=False, style=style)
-
-    n_particles_widget = widgets.BoundedIntText(description='n_particles:', min=100, max=1000, value=500, style=style)
+    Condensation_widget = widgets.Checkbox(description='Condensation', value=True, style=style)
+    Collision_widget = widgets.Checkbox(description='Collision', value=False, style=style)
+    
+    switch_sedi_removal = widgets.Checkbox(description='Sedimentation removal', value=False, style=style)
+    
+    n_particles_widget = widgets.BoundedIntText(description='n_particles:', min=100,max = 10000, value=1000, style=style)
    
-    max_z_widget = widgets.BoundedFloatText(description='z_max (m):', min = 0.0, max = 2000.0, step = 0.1, value=1500.0, style=style)
+    max_z_widget = widgets.BoundedFloatText(description='z_max (m):', min = 0.0, max = 10000.0, step = 0.1, value=3000.0, style=style)
     z_widget = widgets.BoundedFloatText(description='z_0 (m):', min = 0.0, max = 800.0, step = 0.1, value=0.0, style=style)
 
     # Display the widgets
-    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, max_z_widget) 
+    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget) 
     
-    return dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, max_z_widget
+    return dt_widget, nt_widget, Condensation_widget, Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget
 
 def parcel_info_input():
     style = {'description_width': 'initial'}
     # Section for widgets for parcel info
     T_widget = widgets.BoundedFloatText(description='T (K):', min = 200.0, max = 320.0, step = 0.1, value=293.2, style=style)
     P_widget = widgets.BoundedFloatText(description='P (Pa):', min = 950.0E2, max = 1050.0E2, step = 1, value=1013.0E2, style=style)
-    RH_widget= widgets.BoundedFloatText(description='RH (-):', min = 0.01, max = 0.99, step = 0.01, value=0.88, style=style)
-    w_widget = widgets.BoundedFloatText(description='w (m/s):', min = 0.0, max = 10, step = 0.1, value=0.5, style=style)
+    RH_widget= widgets.BoundedFloatText(description='RH (-):', min = 0.01, max = 2.0, step = 0.01, value=0.88, style=style)
+    w_widget = widgets.BoundedFloatText(description='w (m/s):', min = 0.0, max = 10, step = 0.1, value=1.0, style=style)
     z_widget = widgets.BoundedFloatText(description='z (m):', min = 0.0, max = 20000.0,  step = 100.0, value=0.0, style=style)
-
 
     # Display widgets
     display('Parcel initial parameters: ', T_widget, P_widget, RH_widget, w_widget, z_widget)
@@ -70,16 +71,16 @@ def grid_modes_input():
 
     # Column 0 for mode 1
     gridwidget[0, 0]= widgets.Button(description='Mode #1', disabled=False, button_style='info', tooltip='Heading', style=style)
-    gridwidget[1, 0] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=1000.0, style=style)
-    gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.008, style=style)
-    gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=1.6, style=style)
+    gridwidget[1, 0] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=118.0, style=style)
+    gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.019, style=style)
+    gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=3.3, style=style)
     gridwidget[4, 0] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     
     # Column 1 for mode 2
     gridwidget[0, 1]= widgets.Button(description='Mode #2', disabled=False, button_style='info', tooltip='Heading')
-    gridwidget[1, 1] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=800.0, style=style)
-    gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.034, style=style)
-    gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=2.1, style=style)
+    gridwidget[1, 1] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=11.0, style=style)
+    gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.056, style=style)
+    gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=1.6, style=style)
     gridwidget[4, 1] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 2 for mode 3
     gridwidget[0, 2]= widgets.Button(description='Mode #3', disabled=False, button_style='info', tooltip='Heading')

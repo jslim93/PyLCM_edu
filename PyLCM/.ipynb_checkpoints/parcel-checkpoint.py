@@ -16,7 +16,6 @@ def parcel_rho(P_parcel, T_parcel):
     
     return(rho_parcel, V_parcel, air_mass_parcel) # (Assumed) air mass of parcel
 
-
 def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, max_z, time_half_wave_parcel=1200.0, ascending_mode='linear', t_start_oscillation=800):
     # Computes values for the ascending parcel. Three ascending mode options are provided.
     # Users can change the half wavelength of the oscillation (time_half_wave_parcel (s)) and the oscillation start time (t_start_oscillation (s), only relevant for the 'in_cloud_oscillation' case)

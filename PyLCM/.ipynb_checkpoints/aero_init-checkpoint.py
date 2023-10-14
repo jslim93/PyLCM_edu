@@ -70,11 +70,8 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
     
     # Aerosol initialization
-    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero, k_aero, switch_kappa_koehler)
+    T_parcel, q_parcel, particles_list = aero_init(mode_aero_init, n_particles, P_parcel,z_parcel, T_parcel,q_parcel, N_aero, mu_aero, sigma_aero, rho_aero, k_aero, switch_kappa_koehler)
     
-    # Initialize arrays for mean radii and standard deviation
-    r_liq_avg_array = np.zeros(nt+1)
-    r_liq_std_array = np.zeros(nt+1)
     # Variant for mean radii and std. dev. of cloud+rain droplets only
     rc_liq_avg_array = np.zeros(nt+1)
     rc_liq_std_array = np.zeros(nt+1)
@@ -90,9 +87,8 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     qa_ts,qc_ts,qr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     con_ts, act_ts, evp_ts, dea_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
-    acc_ts, aut_ts = np.zeros(nt+1),np.zeros(nt+1)
-    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0], r_liq_avg_array[0], r_liq_std_array[0], particles_array[0], rc_liq_avg_array[0], rc_liq_std_array[0], particles_c_array[0] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins)
-    
+    acc_ts, aut_ts, precip_ts = np.zeros(nt+1),np.zeros(nt+1), np.zeros(nt+1)
+    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0], particles_array[0], rc_liq_avg_array[0], rc_liq_std_array[0], particles_c_array[0] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins,n_particles)
     
     # Initialization of arrays for T_parcel, RH_parcel, q_parcel and z_parcel. 
     # They will later be filled with values for each time step.
@@ -100,7 +96,6 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     RH_parcel_array = np.zeros(nt+1)
     q_parcel_array  = np.zeros(nt+1)
     z_parcel_array  = np.zeros(nt+1)
-
 
     # Inserting the initialization values at the 0th position of the arrays.
     T_parcel_array[0]  = T_parcel
@@ -118,9 +113,9 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     # Read in selected display mode (options are: 'text_fast' or 'graphics')
     display_mode = mode_displaytype_widget.value
     
-    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, r_liq_avg_array, r_liq_std_array, particles_array, rc_liq_avg_array, rc_liq_std_array, particles_c_array
+    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, precip_ts, particles_array, rc_liq_avg_array, rc_liq_std_array, particles_c_array, n_particles
 
-def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero, k_aero, switch_kappa_koehler):
+def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero, k_aero, switch_kappa_koehler):
     
     # Aerosol initialization
     rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
@@ -191,7 +186,9 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_ae
                 particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero,switch_kappa_koehler,particle.kappa))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
             else: 
                 particle.M = 0.0
-                
+            #Initalize particle position 
+            particle.z = z_parcel
+            particle.id = i
             #Put initialized particle in a particles_list 
             particles_list.append(particle)
             
@@ -220,6 +217,9 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, T_parcel,q_parcel, N_aero, mu_ae
             else: 
                 particle.M = 0.0
             
+            #Initalize particle position 
+            particle.z = z_parcel
+            particle.id = i
             #Put initialized particle in a particles_list 
             particles_list.append(particle)
 
