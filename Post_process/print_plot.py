@@ -57,7 +57,7 @@ def print_output(t,dt, z_parcel, T_parcel, q_parcel, rh, qc, qr, na, nc, nr):
     print("after: {:<8.1f}  {:<8.2f} {:<8.2f} {:<9.2f} {:<8.3f}  {:<8.3f}  {:<8.3f}  {:<8.2f}  {:<8.2f}  {:<8.2f}".format(
         (t+1) * dt, z_parcel, T_parcel, 1e3 * q_parcel, 100* rh, qc,  qr, na , nc , nr))
     
-def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, rc_liq_avg_array):
+def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, spectra_arr, increment_widget, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, rc_liq_avg_array,droplet_mode_widget):
     # Core function of the post processing "plot" section which provides 6 subplots to all main model variables
     # Initialization of subplot layout
     fig, axs = plt.subplots(2, 4, sharex=False, sharey=False, figsize=(18,8))
@@ -165,6 +165,14 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
         axs[1,1].set_xlabel('Radius (µm)')
         axs[1,1].set_ylabel('DSD dN/dlog(R) (mg$^{-1}$)')
         
+        if droplet_mode_widget == "Aerosol mode":
+            axs[1,1].set_xlim(0.01,1.0) 
+        elif droplet_mode_widget == "Droplet mode":
+            valid_ind = np.where(~np.isnan(spectra_arr_nan))
+            # Find the index of the largest non-NaN value
+            r_max_ind = valid_ind[1][np.argmax(spectra_arr_nan[valid_ind])]
+            r_max_ind = max(r_max_ind+2, len(rm_spec)-1)
+            axs[1,1].set_xlim(1.0,rm_spec[r_max_ind]*1e6) 
         
     # Add colorbar for particle densities plot
     # Select the plot axis
