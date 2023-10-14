@@ -40,11 +40,11 @@ molecular_weight_aero = 0.058443 # (kg/mol)   58.443 g/mol
 #parameter to draw spectra. 
 #-------------------------------------------------------
 
-alpha_spec   = 1.0    # bin spacing: mass(n+1) = mass(n) * 2^alpha_spec
-r_start_spec = 0.005E-6 #! smallest radius for spectra; 0.01E-6 to see haze, cloud droplets, and rain; 1.5625 to see cloud droplets and rain
-x_start_spec =4.0 / 3.0 * np.pi * rho_liq * ( r_start_spec )**3
-r_end_spec = 8000.0E-6
-x_end_spec = 4.0 / 3.0 * np.pi * rho_liq * ( r_end_spec )**3
+alpha_spec   = 4.0    # bin spacing: mass(n+1) = mass(n) * 2^alpha_spec
+r_start_spec = 0.01E-6 #! smallest radius for spectra; 0.01E-6 to see haze, cloud droplets, and rain; 1.5625 to see cloud droplets and rain
+x_start_spec = 4.0 / 3.0 * np.pi * rho_liq * ( r_start_spec )**3
+r_end_spec   = 8000.0E-6
+x_end_spec   = 4.0 / 3.0 * np.pi * rho_liq * ( r_end_spec )**3
 
 n_bins  = int( np.log10( x_end_spec / x_start_spec ) / np.log10( 2.0**alpha_spec ) )
 

@@ -45,7 +45,6 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
             elif check_collection:
                 particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2,  acc_ts, aut_ts)
 
-
 # Merge the lists at the end of the loop
     particles_list = particle_list1 + particle_list2
 
@@ -108,34 +107,43 @@ def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
         particle2 =  ptcl_int1
     
     return(particle1, particle2, acc_ts, aut_ts)
-@jit(nopython=True) 
+
 def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
-    large_drop_size = max(particle1.M / particle1.A, particle2.M / particle2.A)
-    small_drop_size = min(particle1.M / particle1.A, particle2.M / particle2.A)
+    
+    large_drop_size = max(ptcl_int1.M / ptcl_int1.A, ptcl_int2.M / ptcl_int2.A)
+    small_drop_size = min(ptcl_int1.M / ptcl_int1.A, ptcl_int2.M / ptcl_int2.A)
+    
+    #Droplet volume for kappa collision estimation
+    v_ptcl1 = ptcl_int1.M / ptcl_int1.A / rho_liq
+    v_ptcl2 = ptcl_int2.M / ptcl_int2.A / rho_liq
+    
     #Autoconversion mass
     if (large_drop_size < mass_crit) and (small_drop_size < mass_crit) and (small_drop_size + large_drop_size >= mass_crit):
         aut_ts += ptcl_int1.M + ptcl_int2.M
-    
-    ptcl_int1.M = ptcl_int1.M + ptcl_int2.M
-    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int2.Ns
-    
-    ptcl_int2.M = ptcl_int1.M * 0.5
-    ptcl_int2.Ns = ptcl_int1.Ns * 0.5
-    
+        
     #Accretion mass
     if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
-        acc_ts += ptcl_int1.M * 0.5
-    
-    ptcl_int1.M = ptcl_int1.M * 0.5
-    ptcl_int1.Ns = ptcl_int1.Ns * 0.5
-    
-    ptcl_int2.A = ptcl_int1.A * 0.5
-    ptcl_int2.A = ptcl_int1.A * 0.5
-    
-    return(ptcl_int1, ptcl_int2, acc_ts, aut_ts)
+        acc_ts += small_drop_size * ptcl_int1.A
 
+    ptcl_int1.M  = ptcl_int1.M  + ptcl_int2.M
+    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int2.Ns
+    ptcl_int1.A  = ptcl_int1.A  + ptcl_int2.A
+    
+    ptcl_int2.M  = ptcl_int1.M  * 0.5
+    ptcl_int2.Ns = ptcl_int1.Ns * 0.5
+    ptcl_int2.A  = ptcl_int1.A  * 0.5
+    
+    ptcl_int1.M  = ptcl_int2.M 
+    ptcl_int1.Ns = ptcl_int2.Ns 
+    ptcl_int1.A  = ptcl_int2.A
+    
+    #Update volume-mean averaged kappa
+    ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
+    ptcl_int2.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
+
+    return(ptcl_int1, ptcl_int2, acc_ts, aut_ts)
 
 import math
 import numpy as np
@@ -168,11 +176,6 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
 
     if collection_kernel_micro.strip() == 'hall':
         K = pi * (R_m + R_n) ** 2 * v_r * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
-    #elif collection_kernel_micro.strip() == 'wang':
-    #    if diss_rate_LEM < 1.0E-10:
-    #        K = pi * (R_m + R_n) ** 2 * v_r * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r)
-    #    else:
-    #        K = gck(R_m, R_n, diss_rate_LEM) * E_WG09(R_m, R_n, diss_rate_LEM) * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r)
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
     p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)

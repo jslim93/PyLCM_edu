@@ -62,8 +62,8 @@ def grid_modes_input():
     # N, mu, sigma for each mode
     print('N_aero: number of aerosols per cubic centimeter, mu: mean droplet radius, sigma: std of mu')
 
-    # Arrange the widgets in a 4x4 layout
-    gridwidget = widgets.GridspecLayout(4, 4)
+    # Arrange the widgets in a 5x4 layout
+    gridwidget = widgets.GridspecLayout(5, 4)
     
     # Adjust the style that descriptions are displayed in full length
     style = {'description_width': 'initial'}
@@ -73,25 +73,26 @@ def grid_modes_input():
     gridwidget[1, 0] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=1000.0, style=style)
     gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.008, style=style)
     gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=1.6, style=style)
-
+    gridwidget[4, 0] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
+    
     # Column 1 for mode 2
     gridwidget[0, 1]= widgets.Button(description='Mode #2', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 1] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=800.0, style=style)
     gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.034, style=style)
     gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=2.1, style=style)
-
+    gridwidget[4, 1] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 2 for mode 3
     gridwidget[0, 2]= widgets.Button(description='Mode #3', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 2] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.01, value=0.72, style=style)
     gridwidget[2, 2] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.1, value=0.46, style=style)
     gridwidget[3, 2] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=2.2, style=style)
-
+    gridwidget[4, 2] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 3 for mode 4
     gridwidget[0, 3]= widgets.Button(description='Mode #4', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 3] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=0, style=style)
     gridwidget[2, 3] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.1, value=0, style=style)
     gridwidget[3, 3] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=0, style=style)
-    
+    gridwidget[4, 3] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # An additional button will be added later below of these widgets for the plot of the cumulative distribution.
     # plotbutton_widget = widgets.Button(description='Plot cumulative distr.', disabled=False, button_style='info', tooltip='Plot cumulative distribution of all modes')
 
@@ -99,8 +100,6 @@ def grid_modes_input():
     # display(plotbutton_widget)
     
     return gridwidget
-
-
 
 # Function for kohler activation radius widget
 def kohler_settings():
@@ -113,7 +112,16 @@ def kohler_settings():
      
     return kohler_widget
 
+# Function for kohler activation radius widget
+def kappa_settings():
+    # Adjust the style that descriptions are displayed in full length
+    style = {'description_width': 'initial'}
+    # Set if activation radius uses kohler critical radius
+    kappa_widget = widgets.Checkbox(description='Hygroscopicity', value=False, style=style, layout={'width': 'max-content'})
 
+    display(r"Use hygroscopicity parameter from kappa-kohler theory",kappa_widget)
+
+    return kappa_widget
 
 # Function for time step widgets
 def timestep_display_mode_settings():
