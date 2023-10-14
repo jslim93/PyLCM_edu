@@ -78,7 +78,6 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     
     # Initialize array for all radii of particles for plot of their time evolution
     particles_array = np.zeros((nt+1, len(particles_list)))
-    particles_c_array = np.zeros((nt+1, len(particles_list))) # Only cloud and rain droplets here
     
     # Parcel routine
     # Initalize spectrum output
@@ -88,7 +87,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     na_ts,nc_ts,nr_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     con_ts, act_ts, evp_ts, dea_ts = np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1),np.zeros(nt+1)
     acc_ts, aut_ts, precip_ts = np.zeros(nt+1),np.zeros(nt+1), np.zeros(nt+1)
-    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0], particles_array[0], rc_liq_avg_array[0], rc_liq_std_array[0], particles_c_array[0] = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins,n_particles)
+    spectra_arr[0],qa_ts[0], qc_ts[0],qr_ts[0], na_ts[0], nc_ts[0], nr_ts[0], particles_array[0], rc_liq_avg_array[0], rc_liq_std_array[0], = ts_analysis(particles_list,air_mass_parcel,rm_spec, n_bins,n_particles)
     
     # Initialization of arrays for T_parcel, RH_parcel, q_parcel and z_parcel. 
     # They will later be filled with values for each time step.
@@ -113,7 +112,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     # Read in selected display mode (options are: 'text_fast' or 'graphics')
     display_mode = mode_displaytype_widget.value
     
-    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, precip_ts, particles_array, rc_liq_avg_array, rc_liq_std_array, particles_c_array, n_particles
+    return P_parcel, T_parcel, q_parcel, z_parcel, w_parcel, N_aero, mu_aero, sigma_aero, nt, dt, max_z, do_condensation, do_collision, ascending_mode, time_half_wave_parcel, S_lst, display_mode, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array, particles_list, spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, precip_ts, particles_array, rc_liq_avg_array, rc_liq_std_array,n_particles
 
 def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_aero, mu_aero,sigma_aero,rho_aero, k_aero, switch_kappa_koehler):
     
@@ -155,7 +154,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_ae
     mode_indices = np.cumsum(n_particles_mode_int)   
     
     # RNG (random number generator) method to generate distribution where all particles represent the same number of droplets
-    if mode_aero_init == "random":
+    if mode_aero_init == "Random":
         # Generate log-normal distribution for the modes
         temp_arr = []
         for k in range(mode_count):
@@ -194,7 +193,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_ae
             
 
     # Bin-like method to generate distribution where each particle represents different number of droplets
-    elif mode_aero_init == "weighting_factor":
+    elif mode_aero_init == "Weighting_factor":
         
         # Calculate the PDF (probability density function) of the overlapping log-normal distributions
         pdf_sum = np.zeros_like(radius)

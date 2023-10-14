@@ -10,9 +10,8 @@ from PyLCM.aero_init import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 from PyLCM.collision import *
-
  
-def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
+def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins, n_particles):
     # Timesteps analysis: Performs calculations of q_x mixing ratios and n_x number densities and the spectra
     nbins = nbins - 1 # Number of bins are 1 smaller than number of edges.
     
@@ -29,17 +28,18 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     # Initialize empty lists which later will contain the radii of all particles at one timestep (particles_r),
     # the wheighting factors at one timestep respectively (particles_a) or the radii of only cloud droplets (particles_c).
     # In particles_ac wheights are only filled into the list if a cloud / rain droplet exists at exactly this time-step. Otherwise 0 will be assigned.
-    particles_r = []
-    particles_a = []
+    particles_r = np.zeros(n_particles)
+    particles_a = np.zeros(n_particles)
+    
     particles_c = []
     particles_ac = []
     
     particles_nr = len(particles_list) # Number of particles in particles_list
     
-    
     for particle in particles_list:
         # Calculation of radius, mixing ratios and number concentrations
         r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq))**(1/3.0)
+
         if r_liq > activation_radius_ts:
             if r_liq < seperation_radius_ts:
                 qc_mass += particle.M
@@ -47,37 +47,25 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
             else:
                 qr_mass += particle.M
                 NR += particle.A
-            # Append radius of current cloud particle to the list
+            # Append radius of particle to the list
             particles_c.append(r_liq)
             particles_ac.append(particle.A)
         else:
             qa_mass += particle.M 
             NA += particle.A
-            # Append zero value for this particle, as it is no cloud particle at the moment
             particles_c.append(0)
             particles_ac.append(0)
             
         spec = get_spec(nbins,spec,log_edges,r_liq,particle.A,air_mass_parcel)
         
         # Append the radius of the current particle to the list
-        particles_r.append(r_liq)
+        particles_r[particle.id] = r_liq
         # Apped the weighting factor of the current particle to the list
-        particles_a.append(particle.A)
+        particles_a[particle.id] = particle.A
         
-    # Particles wheighted mean (weighting factors included)
-    r_liq_avg = np.sum(np.array(particles_r) * np.array(particles_a)) / np.sum(np.array(particles_a))
-    # Particles weighted standard deviation (weighting factors included)
-    r_liq_std = np.sqrt( np.sum(np.array(particles_a) * (np.array(particles_r - r_liq_avg))**2) / (np.sum(np.array(particles_a))) )
-    
-    # Set zero radii of cloud droplets to na
-    #particles_c = np.array(particles_c)
-    #particles_c[np.where(particles_c==0.0)] = np.nan
-    
-    # Wheighted mean and standard deviation of radius for cloud droplets only
+    # Weighted mean and standard deviation of radius for cloud droplets only
     rc_liq_avg = np.nansum(np.array(particles_c) * np.array(particles_ac)) / np.sum(np.array(particles_ac))
     rc_liq_std = np.sqrt( np.nansum(np.array(particles_ac) * (np.array(particles_c - rc_liq_avg))**2) / (np.sum(np.array(particles_ac))) )
-    
-
 
     # Unit conversion of mixing ratios
     qc = qc_mass / air_mass_parcel *1e3
@@ -89,8 +77,7 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins):
     NC = NC / air_mass_parcel /1e6
     NR = NR / air_mass_parcel /1e6
     
-    
-    return(spec,qa, qc,qr, NA, NC, NR, r_liq_avg, r_liq_std, particles_r, rc_liq_avg, rc_liq_std, particles_c)
+    return(spec,qa, qc,qr, NA, NC, NR, particles_r, rc_liq_avg, rc_liq_std)
 
 def get_spec(nbins,spectra_arr,log_edges,r_liq,weight_factor,air_mass_parcel):
     # Computes array of the spectra

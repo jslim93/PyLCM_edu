@@ -46,7 +46,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
             elif check_collection:
                 particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2,  acc_ts, aut_ts)
         
-        #Change droplet vertical location by subtracting their terminal velocity
+        #Change droplet vertical location by subtracting their terminal velocity from the parcel velocity˛
         if sedi_removal:
             if z_parcel < max_z: 
                 dz_ptcl = w_parcel * dt
@@ -60,14 +60,14 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
                 particle1.A = 0
             if particle2.z <= 0.0:
                 precip_ts += particle2.M
+
                 particle2.A = 0
                 
     # Merge the lists at the end of the loop
     particles_list = particle_list1 + particle_list2
 
     # Remove particle with 0 weighting factor
-    if min(particles_list, key=lambda particle: particle.A).A <= 0:
-        particles_list = [particle for particle in particles_list if particle.A > 0]
+    particles_list = [particle for particle in particles_list if particle.A > 0]
 
     #if collision_timestep_error:
     #    print('+++ Collision time step is too long. +++')

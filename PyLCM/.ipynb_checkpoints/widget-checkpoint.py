@@ -3,7 +3,9 @@
 import numpy as np
 import ipywidgets as widgets
 from IPython.display import display, clear_output
-
+from PyLCM.parameters import *
+from PyLCM.condensation import *
+from PyLCM.parcel import *
 # initialization functions: display widgets and read in parameters given by the user
 def model_steering_input():
     # Adjust the style that descriptions are displayed in full length
@@ -24,9 +26,27 @@ def model_steering_input():
     z_widget = widgets.BoundedFloatText(description='z_0 (m):', min = 0.0, max = 800.0, step = 0.1, value=0.0, style=style)
 
     # Display the widgets
-    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget) 
+    #display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget) # fix sedi_removal first
+    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, max_z_widget) 
+    
     
     return dt_widget, nt_widget, Condensation_widget, Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget
+
+def entrainment_input():
+    
+    style = {'description_width': 'initial'}
+    entrainment_widget = widgets.Checkbox(description='Entrainment', value=False, style=style)
+
+    entrainment_start_widget    = widgets.IntText(description='Entrainment start time (s)', value = 1000, style=style)
+    entrainment_end_widget      = widgets.IntText(description='Entrainment end time (s)', value = 1030, style=style)
+    entrainment_rate_widget     = widgets.FloatText(description=r'Fractional entrainment rate ($ \mathrm{m}^{-1} $)', value = 0.05, style=style, layout={'width': 'max-content'})
+    
+    stability_widget = widgets.ToggleButtons(options=['Stable','Unstable', 'Neutral' ], value='Stable', description='Stability', layout={'width': 'max-content'}, disabled=False)
+    
+    # Display widgets
+    display('Entrainment parameters: ', entrainment_widget, stability_widget, entrainment_start_widget, entrainment_end_widget, entrainment_rate_widget)
+     
+    return entrainment_widget, stability_widget, entrainment_start_widget, entrainment_end_widget, entrainment_rate_widget 
 
 def parcel_info_input():
     style = {'description_width': 'initial'}
@@ -51,7 +71,7 @@ def ascending_mode_input():
 
 def aero_mode_input():
     # Widgets for aerosol initialisation
-    mode_aero_init_widget = widgets.ToggleButtons(options=['weighting_factor', 'random'], value='weighting_factor', layout={'width': 'max-content'}, disabled=False)
+    mode_aero_init_widget = widgets.ToggleButtons(options=['Random','Weighting_factor'], value='Random', layout={'width': 'max-content'}, disabled=False)
     print("\n")
     # Display widgets
     display('Aerosol initialisation mode: ', mode_aero_init_widget)
@@ -142,7 +162,8 @@ def plot_widgets_settings(nt):
     # Widget to set in which increment lines for the spectra are drawn
     increment_widget = widgets.BoundedIntText(description='For droplet spectra: increment: ', value=20, min = 1, max = nt, step=1, style=style)
     
+    droplet_mode_widget = widgets.ToggleButtons(options=['Aerosol mode', 'Droplet mode', 'Total'], value='Total', description='Show only:', layout={'width': 'max-content'}, disabled=False, style=style)
     # Display the widgets
-    display(mode_plots_widget, 'For droplet spectra: set increment (e.g. 20: every 20th timestep a line is drawn): ', increment_widget)
+    display(mode_plots_widget, 'For droplet spectra: set increment (e.g. 20: every 20th timestep a line is drawn): ', increment_widget,droplet_mode_widget)
     
-    return mode_plots_widget, increment_widget
+    return mode_plots_widget, increment_widget,droplet_mode_widget
