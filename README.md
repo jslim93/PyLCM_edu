@@ -4,7 +4,7 @@ Lagrangian Cloud Model(LCM) parcel model for education purposes.
 > **Note:** The entrainment module is still under development. I recommend not using it yet.
 
 ## Installation
-1. install anaconda3 for python / jupyter
+1. Install anaconda3 for python / jupyter
 https://docs.anaconda.com/
 
 2. Create a conda environment for PyLCM (Mac/Linux)
