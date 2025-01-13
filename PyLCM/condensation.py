@@ -4,6 +4,7 @@ from numba import jit
 from PyLCM.parameters import *
 from PyLCM.micro_particle import *
 from scipy.optimize import newton
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Diffusional growth of aerosols, droplets
 def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts, switch_kappa_koehler):
@@ -32,49 +33,41 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
     # Radiation effects, TBD
     D_pre = 0.0
     radiation = 0.0
-        
-    for particle in particles_list:
-        dq_liq = dq_liq - particle.M
-        
-        # Computation of factors a and b related to Koehler curve
-        afactor = 2.0 * sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel) # Curvature effect
 
-        if switch_kappa_koehler:
-            bfactor = particle.kappa
-        else:
-            bfactor = vanthoff_aero * rho_aero * molecular_weight_water / (rho_liq * molecular_weight_aero) # Solute effect
+    def process_particle(particle):
+        nonlocal con_ts, act_ts, evp_ts, dea_ts, dq_liq
+        dq_liq -= particle.M
+
+        afactor = 2.0 * sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel)
+        bfactor = particle.kappa if switch_kappa_koehler else vanthoff_aero * rho_aero * molecular_weight_water / (rho_liq * molecular_weight_aero)
         
-        # Initial radius
-        r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq)) ** 0.33333333333 # Droplet radius
-        r_N = (particle.Ns / (particle.A * 4.0 / 3.0 * np.pi * rho_aero)) ** 0.33333333333 # Aerosol radius
-        # Old particle liquid mass for growth rate calculation        
-        M_old  = particle.M
-        if kohler_activation_radius:
-            activation_radius = np.sqrt( 3.0 * bfactor * r_N**3 / afactor )
-        else:
-            activation_radius = activation_radius_ts
-        # Diffusional growth
+        r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq)) ** 0.33333333333
+        r_N = (particle.Ns / (particle.A * 4.0 / 3.0 * np.pi * rho_aero)) ** 0.33333333333
+        M_old = particle.M
+        activation_radius = np.sqrt(3.0 * bfactor * r_N**3 / afactor) if kohler_activation_radius else activation_radius_ts
+        
         r_liq_old = r_liq
         r_liq = radius_liquid_euler(r_liq, dt, r0, G_pre, supersat, f_vent, afactor, bfactor, r_N, D_pre, radiation)
-            
         particle.M = particle.A * 4.0 / 3.0 * np.pi * rho_liq * r_liq ** 3
         
         if r_liq_old < r_liq:
-            con_ts = con_ts +  (particle.M - M_old)
-            if (r_liq >= activation_radius) and (r_liq_old < activation_radius):
-                # Mass of activated droplets
-                act_ts = act_ts + (particle.M - M_old)
-            
+            con_ts += (particle.M - M_old)
+            if r_liq >= activation_radius and r_liq_old < activation_radius:
+                act_ts += (particle.M - M_old)
         else:
-            evp_ts = evp_ts  +  (particle.M - M_old)
-            if (r_liq < activation_radius) and (r_liq_old >= activation_radius):
-                # Mass of deactivated droplets
-                dea_ts = dea_ts + (particle.M - M_old)
+            evp_ts += (particle.M - M_old)
+            if r_liq < activation_radius and r_liq_old >= activation_radius:
+                dea_ts += (particle.M - M_old)
         
-        dq_liq = dq_liq + particle.M
+        dq_liq += particle.M
+        return particle
 
-    T_parcel = T_parcel + dq_liq * l_v / cp / air_mass_parcel
-    q_parcel = q_parcel - dq_liq / air_mass_parcel
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_particle, particle) for particle in particles_list]
+        particles_list = [future.result() for future in as_completed(futures)]
+
+    T_parcel += dq_liq * l_v / cp / air_mass_parcel
+    q_parcel -= dq_liq / air_mass_parcel
     
     e_s = esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)

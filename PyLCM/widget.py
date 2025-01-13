@@ -17,6 +17,7 @@ def model_steering_input():
 
     Condensation_widget = widgets.Checkbox(description='Condensation', value=True, style=style)
     Collision_widget = widgets.Checkbox(description='Collision', value=False, style=style)
+    switch_lsm_widget = widgets.Checkbox(description='Linear Sampling Method', value=False, style=style)
     
     switch_sedi_removal = widgets.Checkbox(description='Sedimentation removal', value=False, style=style)
     
@@ -27,10 +28,10 @@ def model_steering_input():
 
     # Display the widgets
     #display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget) # fix sedi_removal first
-    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget, n_particles_widget, max_z_widget) 
+    display('Model steering parameters',dt_widget, nt_widget, Condensation_widget,Collision_widget,switch_lsm_widget, n_particles_widget, max_z_widget) 
     
     
-    return dt_widget, nt_widget, Condensation_widget, Collision_widget,switch_sedi_removal, n_particles_widget, max_z_widget
+    return dt_widget, nt_widget, Condensation_widget, Collision_widget, switch_lsm_widget, switch_sedi_removal, n_particles_widget, max_z_widget
 
 def entrainment_input():
     
