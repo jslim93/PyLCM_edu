@@ -7,16 +7,21 @@ from tqdm import tqdm
 import itertools
 from concurrent.futures import ThreadPoolExecutor, as_completed
  
-def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel):
+def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel, switch_lsm):
+    if switch_lsm:
+        # shuffle the particle list for LSM (linear sampling method)
+        particles.shuffle(particles_list)
+        nptcl = len(particles_list)
+        half_length = len(particles_list) // 2
+        
+        particle_list1 = particles_list[:half_length]  # Splitting into the first half
+        particle_list2 = particles_list[half_length:]  # Splitting into the second half
+    else:
+        nptcl = len(particles_list)
+        half_length = nptcl
+        particle_list1 = particles_list
+        particle_list2 = particles_list
 
-    #shuffle the particle list for LSM (linear sampling method)
-    particles.shuffle(particles_list)
-    nptcl = len(particles_list)
-    half_length = len(particles_list) // 2
-    
-    particle_list1 = particles_list[:half_length]  # Splitting into the first half
-    particle_list2 = particles_list[half_length:]  # Splitting into the second half
-    
     def process_collision(particle1, particle2):
         nonlocal acc_ts, aut_ts, precip_ts
         # A superdroplet must contain at least one real particle to collect other droplets
@@ -52,19 +57,19 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         return particle1, particle2, acc_ts, aut_ts, precip_ts
 
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(process_collision, p1, p2) for p1, p2 in zip(particle_list1, particle_list2)]
+        if switch_lsm:
+            futures = [executor.submit(process_collision, p1, p2) for p1, p2 in zip(particle_list1, particle_list2)]
+        else:
+            futures = [executor.submit(process_collision, p1, p2) for p1, p2 in zip(particle_list1, particle_list2) if p1 != p2]
         for future in as_completed(futures):
             p1, p2, acc_ts, aut_ts, precip_ts = future.result()
     
-    # Merge the lists at the end of the loop
-    particles_list = particle_list1 + particle_list2
+    if switch_lsm:
+        # Merge the lists at the end of the loop
+        particles_list = particle_list1 + particle_list2
 
     # Remove particle with 0 weighting factor
     particles_list = [particle for particle in particles_list if particle.A > 0]
-
-    #if collision_timestep_error:
-    #    print('+++ Collision time step is too long. +++')
-    #    collision_timestep_error = False
     
     return particles_list, acc_ts, aut_ts, precip_ts
 
