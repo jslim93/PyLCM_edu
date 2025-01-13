@@ -1,12 +1,13 @@
 import math
 import numpy as np
+import os
 from PyLCM.micro_particle import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
-from concurrent.futures import ThreadPoolExecutor, as_completed
- 
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
+
 def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel, switch_lsm):
     if switch_lsm:
         # shuffle the particle list for LSM (linear sampling method)
@@ -32,7 +33,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
             return particle1, particle2, acc_ts, aut_ts, precip_ts
 
-        check_final, check_collection, v_r1, v_r2 = determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length, nptcl)
+        check_final, check_collection, v_r1, v_r2 = determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length, nptcl, switch_lsm)
 
         if check_final:
             if particle1.A == particle2.A:
@@ -60,7 +61,11 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         if switch_lsm:
             futures = [executor.submit(process_collision, p1, p2) for p1, p2 in zip(particle_list1, particle_list2)]
         else:
-            futures = [executor.submit(process_collision, p1, p2) for p1, p2 in zip(particle_list1, particle_list2) if p1 != p2]
+            futures = []
+            for i in range(len(particle_list1)):
+                for j in range(i, len(particle_list1)):
+                    futures.append(executor.submit(process_collision, particle_list1[i], particle_list1[j]))
+
         for future in as_completed(futures):
             p1, p2, acc_ts, aut_ts, precip_ts = future.result()
     
@@ -73,7 +78,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
     
     return particles_list, acc_ts, aut_ts, precip_ts
 
-def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
+def liquid_update_collection(particle1, particle2, acc_ts, aut_ts):
     
     # _int1: gains total individual mass
     # _int2: loses total mass, constant individual mass
@@ -163,9 +168,7 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
 
     return(ptcl_int1, ptcl_int2, acc_ts, aut_ts)
 
-import math
-import numpy as np
-def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl):
+def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_lsm):
     # Constants
     pi = math.pi
     rho_liq = 1000.0
@@ -196,7 +199,8 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
         K = pi * (R_m + R_n) ** 2 * v_r * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
-    p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
+    if switch_lsm:
+        p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
     
     x_rand = np.random.random()
     
@@ -208,7 +212,6 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
      #     collision_timestep_error = .TRUE.
      #  ENDIF
     return check_final, check_collection, v_r1, v_r2
-
 
 def E_H80(r1, r2):
     # Collision efficiencies by Hall (1980)
@@ -238,7 +241,7 @@ def E_H80(r1, r2):
         [ 0.037, 0.037, 0.037, 0.060, 0.080, 0.290, 0.580, 0.770, 0.890, 0.910, 0.950, 1.000, 1.000, 1.000, 1.000 ], 
         [ 0.037, 0.037, 0.037, 0.041, 0.075, 0.250, 0.540, 0.760, 0.880, 0.920, 0.950, 1.000, 1.000, 1.000, 1.000 ], 
         [ 0.037, 0.037, 0.037, 0.052, 0.067, 0.250, 0.510, 0.770, 0.880, 0.930, 0.970, 1.000, 1.000, 1.000, 1.000 ], 
-        [ 0.037, 0.037, 0.037, 0.047, 0.057, 0.250, 0.490, 0.770, 0.890, 0.950, 1.000, 1.000, 1.000, 1.000, 1.000 ], 
+        [ 0.037, 0.037, 0.037, 0.047, 0.057, 0.250, 0.490, 0.770, 0.890, 0.950, 1.000, 1.000, 1.000, 1.000 ,1.000 ], 
         [ 0.036, 0.036, 0.036, 0.042, 0.048, 0.230, 0.470, 0.780, 0.920, 1.000, 1.020, 1.000, 1.000, 1.000, 1.000 ], 
         [ 0.040, 0.040, 0.035, 0.033, 0.040, 0.112, 0.450, 0.790, 1.010, 1.030, 1.040, 1.000, 1.000, 1.000, 1.000 ], 
         [ 0.033, 0.033, 0.033, 0.033, 0.033, 0.119, 0.470, 0.950, 1.300, 1.700, 2.300, 1.000, 1.000, 1.000, 1.000 ], 
@@ -280,7 +283,6 @@ def E_H80(r1, r2):
     E = max(E, 0.0)
 
     return E
-
 
 def E_S09(r_m, r_n, v_r, rho_liq,t_parcel):
     #Coalescence efficiencies following Straub et al. (2009)
