@@ -5,6 +5,7 @@ from PyLCM.parcel import *
 from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
+from concurrent.futures import ThreadPoolExecutor, as_completed
  
 def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel):
 
@@ -16,37 +17,24 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
     particle_list1 = particles_list[:half_length]  # Splitting into the first half
     particle_list2 = particles_list[half_length:]  # Splitting into the second half
     
-    #Collisions are considered between two shuffled particle lists
-    for particle1, particle2 in zip(particle_list1,particle_list2):
-        
-        #  A superdroplet must contain at least one real particle to collect other droplets
+    def process_collision(particle1, particle2):
+        nonlocal acc_ts, aut_ts, precip_ts
+        # A superdroplet must contain at least one real particle to collect other droplets
         if min(particle1.A, particle2.A) <= 0:
-            continue
+            return particle1, particle2, acc_ts, aut_ts, precip_ts
         
         # The larger droplet should be larger than 10.0 µm to cause collisions.
         if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
-            continue
+            return particle1, particle2, acc_ts, aut_ts, precip_ts
 
-        check_final = False
-        check_collection = False
-        
-        # Find out what kind of interaction (or none) takes place
-        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl)
+        check_final, check_collection, v_r1, v_r2 = determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length, nptcl)
 
         if check_final:
-            
-            # A special treatment is necessary if weighting factors are identical
             if particle1.A == particle2.A:
-                
-                #add acc_ts and aut_ts for same weight factor
                 particle1, particle2, acc_ts, aut_ts = same_weights_update(particle1, particle2, acc_ts, aut_ts)
-
-            # Each droplet of the super-droplet with the smaller weighting factor collects 
-            # one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
-                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2,  acc_ts, aut_ts)
+                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2, acc_ts, aut_ts)
         
-        #Change droplet vertical location by subtracting their terminal velocity from the parcel velocity˛
         if sedi_removal:
             if z_parcel < max_z: 
                 dz_ptcl = w_parcel * dt
@@ -54,15 +42,20 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
                 dz_ptcl = 0.0
             particle1.z = particle1.z - (v_r1 * dt) + dz_ptcl
             particle2.z = particle2.z - (v_r2 * dt) + dz_ptcl
-        #Remove particles at the surface
             if particle1.z <= 0.0:
                 precip_ts += particle1.M
                 particle1.A = 0
             if particle2.z <= 0.0:
                 precip_ts += particle2.M
-
                 particle2.A = 0
-                
+        
+        return particle1, particle2, acc_ts, aut_ts, precip_ts
+
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_collision, p1, p2) for p1, p2 in zip(particle_list1, particle_list2)]
+        for future in as_completed(futures):
+            p1, p2, acc_ts, aut_ts, precip_ts = future.result()
+    
     # Merge the lists at the end of the loop
     particles_list = particle_list1 + particle_list2
 
