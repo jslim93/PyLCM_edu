@@ -17,7 +17,7 @@ def model_steering_input():
 
     Condensation_widget = widgets.Checkbox(description='Condensation', value=True, style=style)
     Collision_widget = widgets.Checkbox(description='Collision', value=False, style=style)
-    switch_lsm_widget = widgets.Checkbox(description='Linear Sampling Method', value=False, style=style)
+    switch_lsm_widget = widgets.Checkbox(description='Linear Sampling Method', value=True, style=style)
     
     switch_sedi_removal = widgets.Checkbox(description='Sedimentation removal', value=False, style=style)
     

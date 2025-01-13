@@ -220,14 +220,14 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     
     if plot_mode=='time-series':
         axs[1,3].plot(time_rolling, aut_ts_rolling, label = "Autoconversion", color='purple')
-        axs[1,3].plot(time_rolling, acc_ts_rolling, label = "Accretion", color='darkorange', linestyle='--')
+        axs[1,3].plot(time_rolling, acc_ts_rolling, label = "Accretion", color='darkorange')
         axs[1,3].set_xlabel("Time (s)")
         axs[1,3].set_ylabel("Conversion Rates (g kg$^{-1}$s$^{-1}$) \n Rolling Mean, Window Size: "+str(window_length))
         axs[1,3].legend()
         
     elif plot_mode=='vertical profile':
         axs[1,3].plot(aut_ts_rolling, z_parcel_rolling, label = "Autoconversion", color='purple')
-        axs[1,3].plot(acc_ts_rolling, z_parcel_rolling, label = "Accretion", color='darkorange', linestyle='--')
+        axs[1,3].plot(acc_ts_rolling, z_parcel_rolling, label = "Accretion", color='darkorange')
         axs[1,3].set_xlabel("Conversion Rates (g kg$^{-1}$s$^{-1}$) \n Rolling Mean, Window Size: "+str(window_length))
         axs[1,3].set_ylabel("Height $z$ (m)")
         axs[1,3].legend()
