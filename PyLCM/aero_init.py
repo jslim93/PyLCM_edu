@@ -33,7 +33,7 @@ def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_pa
     max_z = max_z_widget.value
     
     # Aerosol initialization
-    mode_aero_init = mode_aero_init_widget.value  # Possible values are: "weighting_factor", 'random'
+    mode_aero_init = mode_aero_init_widget.value  # Possible values are: "Weighting_factor", "Random"
 
     # Read in the variables given above taking into account unit factors.
     N_aero     = [gridwidget[1, 0].value*1.0E6, gridwidget[1, 1].value*1.0E6, gridwidget[1, 2].value*1.0E6, gridwidget[1, 3].value*1.0E6]
@@ -194,32 +194,46 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_ae
 
     # Bin-like method to generate distribution where each particle represents different number of droplets
     elif mode_aero_init == "Weighting_factor":
-        
-        # Calculate the PDF (probability density function) of the overlapping log-normal distributions
         pdf_sum = np.zeros_like(radius)
-
+        pdf_modes = []
         for N, mu, sigma in zip(N_aero, mu_aero, sigma_aero):
-            pdf = lognormal_pdf(radius, mu,sigma)
+            pdf = lognormal_pdf(radius, mu, sigma)  # shape (n_ptcl,)
+            pdf_modes.append(N * pdf)
             pdf_sum += N * pdf
-            
-        # Initialize particle (aerosol particles)
+
         for i in range(n_ptcl):
             particle = particles(i)
-            # Define the range of values to evaluate the PDF
             particle.A = air_mass_parcel * pdf_sum[i] * dlogr * radius[i]
             particle.Ns = radius[i]**3 * 4./3. * np.pi * rho_aero * particle.A
-            particle.kappa = 0.5
+
+            if switch_kappa_koehler:
+                pdf_values = [pdf_modes[m][i] for m in range(mode_count)]
+                pdf_total = sum(pdf_values)
+                if pdf_total > 0.0:
+                    # Probability-based approach
+                    pdf_ratios = [val / pdf_total for val in pdf_values]
+                    rand_val = np.random.random()
+                    cumulative = 0
+                    for idx in range(mode_count):
+                        cumulative += pdf_ratios[idx]
+                        if rand_val <= cumulative:
+                            particle.kappa = k_aero[idx]
+                            break
+                else:
+                    particle.kappa = 0.5
+            else:
+                particle.kappa = 0.5
 
             if particle.Ns > min_mass_aero:
-                r_aero = (particle.Ns/ ( particle.A * 4.0 / 3.0 * pi * rho_aero ) )**(1.0/3.0)
-                particle.M = max(r_aero, r_equi(S_adia,T_parcel,r_aero, rho_aero,switch_kappa_koehler,particle.kappa))**3 * particle.A * 4.0 / 3.0 * pi * rho_liq
-            else: 
+                r_aero = (particle.Ns / (particle.A * 4.0 / 3.0 * np.pi * rho_aero)) ** (1.0 / 3.0)
+                particle.M = max(r_aero, r_equi(S_adia, T_parcel, r_aero, rho_aero, switch_kappa_koehler, particle.kappa)) ** 3 * particle.A * 4.0 / 3.0 * np.pi * rho_liq
+            else:
                 particle.M = 0.0
-            
-            #Initalize particle position 
+
+            # Initialize particle position
             particle.z = z_parcel
             particle.id = i
-            #Put initialized particle in a particles_list 
+            # Put initialized particle in a particles_list
             particles_list.append(particle)
 
     dql_liq = (np.sum([p.M for p in particles_list]) - dql_liq)/air_mass_parcel
