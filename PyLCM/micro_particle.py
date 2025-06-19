@@ -3,7 +3,6 @@ from matplotlib import pyplot as plt
 import random
 
 from PyLCM.parameters import *
-from PyLCM.parameters import *
 from PyLCM.parcel import *
 from PyLCM.condensation import *
 
