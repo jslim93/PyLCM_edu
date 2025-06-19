@@ -1,17 +1,39 @@
 import numpy as np
 import sys
-from numba import jit
+from numba import njit
 from PyLCM.parameters import *
 from PyLCM.micro_particle import *
 from scipy.optimize import newton
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
+
+PI = np.pi
+RHO_LIQ_DEFAULT = rho_liq
+
+@lru_cache(maxsize=1024)
+def cached_sigma_air_liq(tabs):
+    tabs_c = tabs - 273.15
+    sigma = (75.93 + 0.115 * tabs_c + 6.818e-2 * tabs_c**2 +
+             6.511e-3 * tabs_c**3 + 2.933e-4 * tabs_c**4 +
+             6.283e-6 * tabs_c**5 + 5.285e-8 * tabs_c**6)
+    return sigma * 1e-3
+
+@lru_cache(maxsize=1024)
+def cached_esatw(T):
+    dT = T - 273.15
+    a = [6.11239921, 0.443987641, 0.142986287e-1,
+         0.264847430e-3, 0.302950461e-5, 0.206739458e-7,
+         0.640689451e-10, -0.952447341e-13, -0.976195544e-15]
+    esatw = a[0] + dT * (a[1] + dT * (a[2] + dT * (a[3] + dT *
+              (a[4] + dT * (a[5] + dT * (a[6] + dT * (a[7] + a[8] * dT)))))))
+    return esatw * 100.0
 
 # Diffusional growth of aerosols, droplets
 def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts, switch_kappa_koehler):
     
     dq_liq = 0
     # Get supersaturation (via saturated water vapour pressure (e_s) and water vapour pressure of the parcel (e_a))
-    e_s = esatw( T_parcel )
+    e_s = cached_esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
     V_parcel   = 100.0 /P_parcel / ( r_a * T_parcel )
     supersat = e_a / e_s - 1.0
@@ -38,7 +60,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         nonlocal con_ts, act_ts, evp_ts, dea_ts, dq_liq
         dq_liq -= particle.M
 
-        afactor = 2.0 * sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel)
+        afactor = 2.0 * cached_sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel)
         bfactor = particle.kappa if switch_kappa_koehler else vanthoff_aero * rho_aero * molecular_weight_water / (rho_liq * molecular_weight_aero)
         
         r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq)) ** 0.33333333333
@@ -69,7 +91,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
     T_parcel += dq_liq * l_v / cp / air_mass_parcel
     q_parcel -= dq_liq / air_mass_parcel
     
-    e_s = esatw( T_parcel )
+    e_s = cached_esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
     S_lst = e_a - e_s
         
@@ -97,6 +119,7 @@ def sigma_air_liq(tabs):
     
     return(sigma_air_liq)
 
+@njit(nogil=True, fastmath=True, cache=True)
 def radius_liquid_euler(r_ini, dt_int, r0, G_pre, supersat, ventilation_effect, afactor, bfactor, r_aero, D_pre, radiation):
     r_eul = r_ini
     r_eul_old = r_ini
