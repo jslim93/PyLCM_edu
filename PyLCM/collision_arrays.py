@@ -215,7 +215,7 @@ def compute_collision_probabilities(
     idx1_arr, idx2_arr
 ):
     """
-    Compute collision probabilities for paired particles in parallel.
+    Compute collision probabilities for paired particles in parallel (LSM method).
 
     Uses Linear Sampling Method (LSM) pairing: particle i with particle i + n//2.
 
@@ -267,6 +267,71 @@ def compute_collision_probabilities(
         # Collision probability with LSM scaling
         p_crit = max(A[idx1], A[idx2]) * K / V_parcel * dt
         p_crit = p_crit * n_particles * (n_particles - 1) / (half_length * 2)
+
+        P_coll[i] = p_crit
+
+    return P_coll
+
+
+@jit(nopython=True, parallel=True, cache=True)
+def compute_collision_probabilities_all_to_all(
+    radii, w_fall, A, dt, V_parcel, n_particles,
+    r0_hall, rat_hall, ecoll_hall, rho_liq_local, T_parcel,
+    idx1_arr, idx2_arr
+):
+    """
+    Compute collision probabilities for all-to-all pairing in parallel.
+
+    All-to-all method: check every unique pair (i,j) where i < j.
+    O(n²) complexity but statistically exact (no sampling variance from pairing).
+
+    Args:
+        radii (np.ndarray): Particle radii [m]
+        w_fall (np.ndarray): Terminal velocities [m/s]
+        A (np.ndarray): Multiplicities
+        dt (float): Time step [s]
+        V_parcel (float): Parcel volume [m³]
+        n_particles (int): Number of particles
+        r0_hall, rat_hall, ecoll_hall: Hall efficiency tables
+        rho_liq_local (float): Liquid density
+        T_parcel (float): Temperature [K]
+        idx1_arr, idx2_arr (np.ndarray): Paired particle indices (all unique pairs)
+
+    Returns:
+        np.ndarray: Collision probabilities for each pair
+    """
+    n_pairs = len(idx1_arr)
+    P_coll = np.zeros(n_pairs, dtype=np.float64)
+
+    # Minimum radius for collision (10 µm)
+    min_mass_radius = 10.0e-6
+
+    for i in prange(n_pairs):
+        idx1 = idx1_arr[i]
+        idx2 = idx2_arr[i]
+
+        r1 = radii[idx1]
+        r2 = radii[idx2]
+
+        # Skip if either particle too small or invalid
+        if min(A[idx1], A[idx2]) <= 0:
+            continue
+        if max(r1, r2) < min_mass_radius:
+            continue
+
+        # Relative velocity
+        dw = abs(w_fall[idx1] - w_fall[idx2])
+
+        # Collection efficiency (Hall + Straub)
+        E_coll = E_H80_local(r1, r2, r0_hall, rat_hall, ecoll_hall)
+        E_coal = E_S09_local(r1, r2, dw, rho_liq_local, T_parcel)
+
+        # Collection kernel
+        K = math.pi * (r1 + r2)**2 * dw * E_coll * E_coal
+
+        # Collision probability - no LSM scaling needed for all-to-all
+        # We check every pair directly, so probability is just p = max(A_i, A_j) * K * dt / V
+        p_crit = max(A[idx1], A[idx2]) * K / V_parcel * dt
 
         P_coll[i] = p_crit
 
@@ -394,16 +459,23 @@ def process_collisions_sequential(
 
 
 def apply_collision_arrays(particle_arrays, T_parcel, P_parcel, dt, do_collision=True,
-                            do_sedi_removal=False, z_parcel=0.0, max_z=3000.0, w_parcel=0.0):
+                            do_sedi_removal=False, z_parcel=0.0, max_z=3000.0, w_parcel=0.0,
+                            use_lsm=True):
     """
     Apply collision-coalescence to ParticleArrays with Numba optimization.
 
-    Uses the Linear Sampling Method (LSM):
+    Supports two pairing methods:
+    1. LSM (Linear Sampling Method) - O(n) pairs, default
+    2. All-to-all - O(n²) pairs, statistically exact but slower
+
+    LSM procedure:
     1. Shuffle particle indices
     2. Pair particle i with particle i + n//2
-    3. Compute collision probabilities in parallel
-    4. Process collisions sequentially (due to mass transfer dependencies)
-    5. Compact arrays at end (remove A <= 0)
+    3. Scale collision probability to account for sampling
+
+    All-to-all procedure:
+    1. Generate all unique pairs (i,j) where i < j
+    2. Check each pair directly (no probability scaling)
 
     Args:
         particle_arrays (ParticleArrays): Particle arrays
@@ -415,6 +487,9 @@ def apply_collision_arrays(particle_arrays, T_parcel, P_parcel, dt, do_collision
         z_parcel (float): Parcel height [m]
         max_z (float): Maximum height [m]
         w_parcel (float): Updraft velocity [m/s]
+        use_lsm (bool): If True, use LSM pairing (O(n), default).
+                        If False, use all-to-all pairing (O(n²), exact).
+                        All-to-all is only practical for n <= ~500 particles.
 
     Returns:
         tuple: (n_collisions, n_autoconversions, precip_mass)
@@ -436,23 +511,45 @@ def apply_collision_arrays(particle_arrays, T_parcel, P_parcel, dt, do_collision
     # Compute terminal velocities in parallel
     w_fall = ws_drops_beard_batch(radii, rho_parcel, rho_liq, P_parcel, T_parcel)
 
-    # Shuffle indices for LSM pairing
-    indices = np.random.permutation(n_particles)
+    if use_lsm:
+        # LSM pairing: shuffle and pair first half with second half
+        indices = np.random.permutation(n_particles)
+        half_length = n_particles // 2
+        idx1_arr = indices[:half_length]
+        idx2_arr = indices[half_length:half_length * 2]
 
-    # Create paired indices: first half paired with second half
-    half_length = n_particles // 2
-    idx1_arr = indices[:half_length]
-    idx2_arr = indices[half_length:half_length * 2]
+        # Compute collision probabilities with LSM scaling
+        P_coll = compute_collision_probabilities(
+            radii, w_fall, particle_arrays.A, dt, V_parcel, n_particles,
+            R0_HALL, RAT_HALL, ECOLL_HALL, rho_liq, T_parcel,
+            idx1_arr, idx2_arr
+        )
 
-    # Compute collision probabilities in parallel
-    P_coll = compute_collision_probabilities(
-        radii, w_fall, particle_arrays.A, dt, V_parcel, n_particles,
-        R0_HALL, RAT_HALL, ECOLL_HALL, rho_liq, T_parcel,
-        idx1_arr, idx2_arr
-    )
+        # Pre-generate random numbers for collision decisions
+        rand_vals = np.random.random(half_length)
+    else:
+        # All-to-all pairing: generate all unique pairs (i,j) where i < j
+        # Number of unique pairs: n*(n-1)/2
+        n_pairs = n_particles * (n_particles - 1) // 2
+        idx1_arr = np.zeros(n_pairs, dtype=np.int64)
+        idx2_arr = np.zeros(n_pairs, dtype=np.int64)
 
-    # Pre-generate random numbers for collision decisions
-    rand_vals = np.random.random(half_length)
+        pair_idx = 0
+        for i in range(n_particles):
+            for j in range(i + 1, n_particles):
+                idx1_arr[pair_idx] = i
+                idx2_arr[pair_idx] = j
+                pair_idx += 1
+
+        # Compute collision probabilities without LSM scaling
+        P_coll = compute_collision_probabilities_all_to_all(
+            radii, w_fall, particle_arrays.A, dt, V_parcel, n_particles,
+            R0_HALL, RAT_HALL, ECOLL_HALL, rho_liq, T_parcel,
+            idx1_arr, idx2_arr
+        )
+
+        # Pre-generate random numbers for collision decisions
+        rand_vals = np.random.random(n_pairs)
 
     # Critical mass for autoconversion (separation radius)
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * pi * rho_liq

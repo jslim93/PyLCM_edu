@@ -70,7 +70,9 @@ def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, max_z,theta_pro
     return z_parcel, T_parcel, P_parcel
 
 #Functions to make environmental profiles for three different stability conditions
-def create_env_profiles(T_init, qv_init,z_init,p_env, stability_condition):
+def create_env_profiles(T_init, qv_init,z_init,p_env, stability_condition, plot_profiles=True):
+    import matplotlib.pyplot as plt
+    
     #Create temperature and vapor content profiles based on initial conditions.
     z_env = np.arange(z_init, 3001, 10) # vertical levels up to 3000m
     if stability_condition == 'Stable':
@@ -90,25 +92,26 @@ def create_env_profiles(T_init, qv_init,z_init,p_env, stability_condition):
     
     theta_profiles = theta_init + lapse_rates * z_env
         
-    fig, ax1 = plt.subplots(figsize=(4, 6))
-    ax1.plot(theta_profiles, z_env, c="r", lw=3, label=r"$ \Theta $ (K)")
-    ax1.set_xlabel(r"$ \Theta $ (K)", color='r')
-    ax1.tick_params(axis='x', colors='r') 
-    
-    # Create a second axis that shares the same y-axis
-    ax2 = ax1.twiny()
-    ax2.plot(qv_profiles*1e3, z_env, c="k", ls="--", lw=3, label=r"$q_{\mathrm{v}}$ (g/kg)")
-    ax2.set_xlabel(r"$q_{\mathrm{v}}$ (g/kg)")
-    ax2.tick_params(axis='x', colors='k')  
-    
-    plt.ylabel("z (m)")
-    # Add a legend
-    lines, labels = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax2.legend(lines + lines2, labels + labels2)
+    if plot_profiles:
+        fig, ax1 = plt.subplots(figsize=(4, 6))
+        ax1.plot(theta_profiles, z_env, c="r", lw=3, label=r"$ \Theta $ (K)")
+        ax1.set_xlabel(r"$ \Theta $ (K)", color='r')
+        ax1.tick_params(axis='x', colors='r') 
+        
+        # Create a second axis that shares the same y-axis
+        ax2 = ax1.twiny()
+        ax2.plot(qv_profiles*1e3, z_env, c="k", ls="--", lw=3, label=r"$q_{\mathrm{v}}$ (g/kg)")
+        ax2.set_xlabel(r"$q_{\mathrm{v}}$ (g/kg)")
+        ax2.tick_params(axis='x', colors='k')  
+        
+        plt.ylabel("z (m)")
+        # Add a legend
+        lines, labels = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax2.legend(lines + lines2, labels + labels2)
 
-    plt.title(stability_condition + " condition")
-    plt.show()
+        plt.title(stability_condition + " condition")
+        plt.show()
 
     
     return qv_profiles, theta_profiles, z_env

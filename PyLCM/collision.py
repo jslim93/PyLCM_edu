@@ -160,8 +160,10 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
     ptcl_int1.Ns = ptcl_int2.Ns 
     
     #Update volume-mean averaged kappa
-    ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
-    ptcl_int2.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
+    # Fix: Calculate new kappa before updating either particle to avoid using modified value
+    kappa_new = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa) / (v_ptcl1 + v_ptcl2)
+    ptcl_int1.kappa = kappa_new
+    ptcl_int2.kappa = kappa_new
 
     return(ptcl_int1, ptcl_int2, acc_ts, aut_ts)
 

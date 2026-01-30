@@ -115,17 +115,18 @@ def ts_analysis_arrays(particle_arrays, air_mass_parcel, rm_spec, n_bins, n_part
     return spectrum, qa, qc, qr, na, nc, nr, n_particles, rc_liq_avg, rc_liq_std
 
 
-def timesteps_function_arrays(n_particles, P_parcel, RH_parcel, T_parcel, w_parcel, nt, dt, 
+def timesteps_function_arrays(n_particles, P_parcel, RH_parcel, T_parcel, w_parcel, nt, dt,
                                rm_spec, ascending_mode='linear', z_parcel=0.0, max_z=3000.0,
-                               do_condensation=True, do_collision=False, 
-                               mode_aero_init='Weighting_factor', 
+                               do_condensation=True, do_collision=False,
+                               mode_aero_init='Weighting_factor',
                                N_aero=None, mu_aero=None, sigma_aero=None, k_aero=None,
                                kohler_activation_radius=False, switch_kappa_koehler=False,
                                do_sedi_removal=False,
                                entrainment_rate=0.0, switch_entrainment=False,
                                qv_profiles=None, theta_profiles=None,
                                entrainment_start=0, entrainment_end=0,
-                               output_interval=1, verbose=True, progress_callback=None):
+                               output_interval=1, verbose=True, progress_callback=None,
+                               seed=None, collision_seed=None, use_lsm=True):
     """
     Array-based timestep loop for PyLCM_edu (optimized version).
     
@@ -162,14 +163,28 @@ def timesteps_function_arrays(n_particles, P_parcel, RH_parcel, T_parcel, w_parc
         entrainment_end (float): Entrainment end time [s]
         output_interval (int): Output diagnostic every N steps
         verbose (bool): Print progress
-    
+        seed (int, optional): Random seed for initialization (aerosol sampling).
+                              If None, uses non-deterministic random state.
+        collision_seed (int, optional): Separate random seed for collision process.
+                              If None, continues from initialization seed state.
+                              Use this to have deterministic initialization but
+                              stochastic collision (for convergence studies).
+        use_lsm (bool): If True (default), use Linear Sampling Method for collision
+                        pairing (O(n) pairs). If False, use all-to-all pairing
+                        (O(n²) pairs), which is statistically exact but only
+                        practical for n <= ~500 particles.
+
     Returns:
         tuple: (nt, dt, time_array, T_parcel_array, RH_parcel_array, q_parcel_array,
                 z_parcel_array, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts,
                 spectra_arr, con_ts, act_ts, evp_ts, dea_ts, acc_ts, aut_ts, precip_ts,
                 particles_array, rc_liq_avg_array, rc_liq_std_array)
     """
-    
+    # Set random seed for reproducibility (affects np.random calls in
+    # aero_init_arrays and collision_arrays)
+    if seed is not None:
+        np.random.seed(seed)
+
     # Set defaults for aerosol parameters if not provided
     if N_aero is None:
         N_aero = [118.0e6, 11.0e6, 0.72e6, 0.0]
@@ -239,10 +254,15 @@ def timesteps_function_arrays(n_particles, P_parcel, RH_parcel, T_parcel, w_parc
     if verbose:
         print(f"  Initialization complete in {time.time() - init_start:.3f}s")
         print(f"  Starting {nt} timestep loop...")
-    
+
     if progress_callback:
         progress_callback(5, "Initialization complete, starting timestep loop...")
-    
+
+    # Reseed for collision if separate collision_seed is provided
+    # This allows deterministic initialization with stochastic collision
+    if collision_seed is not None:
+        np.random.seed(collision_seed)
+
     # Initial analysis
     rho_parcel, V_parcel, air_mass_parcel = parcel_rho(P_parcel, T_parcel)
 
@@ -329,7 +349,7 @@ def timesteps_function_arrays(n_particles, P_parcel, RH_parcel, T_parcel, w_parc
             n_coll, n_auto, precip = apply_collision_arrays(
                 particle_arrays, T_parcel, P_parcel, dt, do_collision=True,
                 do_sedi_removal=do_sedi_removal, z_parcel=z_parcel,
-                max_z=max_z, w_parcel=w_parcel
+                max_z=max_z, w_parcel=w_parcel, use_lsm=use_lsm
             )
 
             acc_ts[t + 1] = n_coll
