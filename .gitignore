@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Output
+Output/
+*.png
+*.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
