@@ -346,3 +346,299 @@ def ws_drops_beard(radius, rho_parcel, rho_liq, p_env, T_parcel):
         ws_drops_beard = eta * NRe / (rho_parcel * diameter)
 
     return ws_drops_beard
+
+
+# =========================================================================
+# Ice collision processes: Aggregation and Riming
+# Following SAM LCM: micro_coll.f90
+# =========================================================================
+
+def collection_mixed_phase(dt, particles_list, rho_parcel, p_env, T_parcel,
+                            acc_ts, aut_ts, precip_ts, rim_ts, agg_ts,
+                            sedi_removal, z_parcel, max_z, w_parcel):
+    """
+    Collection routine for mixed-phase clouds.
+
+    Handles:
+    - Liquid-liquid coalescence
+    - Ice-ice aggregation
+    - Ice-liquid riming
+
+    Parameters:
+    -----------
+    dt : float
+        Time step (s)
+    particles_list : list
+        List of particle objects
+    rho_parcel : float
+        Air density (kg/m³)
+    p_env : float
+        Pressure (Pa)
+    T_parcel : float
+        Temperature (K)
+    acc_ts, aut_ts, precip_ts : float
+        Accretion, autoconversion, precipitation trackers
+    rim_ts, agg_ts : float
+        Riming and aggregation mass trackers
+    sedi_removal : bool
+        Enable sedimentation removal
+    z_parcel, max_z, w_parcel : float
+        Parcel height, max height, updraft velocity
+
+    Returns:
+    --------
+    particles_list, acc_ts, aut_ts, precip_ts, rim_ts, agg_ts
+    """
+    from PyLCM.ice_physics import ws_ice_boehm
+
+    # Shuffle for LSM
+    particles.shuffle(particles_list)
+    nptcl = len(particles_list)
+    half_length = nptcl // 2
+
+    if half_length == 0:
+        return particles_list, acc_ts, aut_ts, precip_ts, rim_ts, agg_ts
+
+    particle_list1 = particles_list[:half_length]
+    particle_list2 = particles_list[half_length:2*half_length]
+
+    V_parcel = 1.0  # m³
+
+    for p1, p2 in zip(particle_list1, particle_list2):
+        if min(p1.A, p2.A) <= 0:
+            continue
+
+        # Determine collision type and calculate terminal velocities
+        p1_is_ice = p1.micro_type < 0
+        p2_is_ice = p2.micro_type < 0
+
+        # Get terminal velocities
+        if p1_is_ice:
+            mass1 = p1.M / p1.A
+            v1 = ws_ice_boehm(p1.aaxis, p1.caxis, p1.dns, mass1, T_parcel, rho_parcel)
+        else:
+            r1 = (p1.M / p1.A / (4.0/3.0 * pi * rho_liq))**(1.0/3.0)
+            v1 = ws_drops_beard(r1, rho_parcel, rho_liq, p_env, T_parcel)
+
+        if p2_is_ice:
+            mass2 = p2.M / p2.A
+            v2 = ws_ice_boehm(p2.aaxis, p2.caxis, p2.dns, mass2, T_parcel, rho_parcel)
+        else:
+            r2 = (p2.M / p2.A / (4.0/3.0 * pi * rho_liq))**(1.0/3.0)
+            v2 = ws_drops_beard(r2, rho_parcel, rho_liq, p_env, T_parcel)
+
+        # Liquid-Liquid coalescence
+        if not p1_is_ice and not p2_is_ice:
+            check, p_crit = determine_coalescence(p1, p2, v1, v2, dt, V_parcel, nptcl, half_length, T_parcel)
+            if check:
+                p1, p2, acc_ts, aut_ts = liquid_update_collection(p1, p2, acc_ts, aut_ts)
+
+        # Ice-Ice aggregation
+        elif p1_is_ice and p2_is_ice:
+            check, p_crit = determine_aggregation(p1, p2, v1, v2, dt, V_parcel, nptcl, half_length)
+            if check:
+                p1, p2, agg_ts = update_aggregation(p1, p2, agg_ts)
+
+        # Ice-Liquid riming
+        else:
+            check, p_crit = determine_riming(p1, p2, v1, v2, dt, V_parcel, nptcl, half_length, T_parcel, rho_parcel)
+            if check:
+                p1, p2, rim_ts = update_riming(p1, p2, rim_ts, T_parcel)
+
+        # Sedimentation
+        if sedi_removal:
+            dz = w_parcel * dt if z_parcel < max_z else 0.0
+            p1.z = p1.z - v1 * dt + dz
+            p2.z = p2.z - v2 * dt + dz
+
+            if p1.z <= 0.0:
+                precip_ts += p1.M
+                p1.A = 0
+            if p2.z <= 0.0:
+                precip_ts += p2.M
+                p2.A = 0
+
+    particles_list = particle_list1 + particle_list2
+    if len(particles_list) < nptcl:
+        particles_list.extend(particles_list[2*half_length:])
+
+    particles_list = [p for p in particles_list if p.A > 0]
+
+    return particles_list, acc_ts, aut_ts, precip_ts, rim_ts, agg_ts
+
+
+def determine_coalescence(p1, p2, v1, v2, dt, V_parcel, nptcl, half_length, T_parcel):
+    """Determine if liquid-liquid coalescence occurs."""
+    r1 = (p1.M / p1.A / (4.0/3.0 * pi * rho_liq))**(1.0/3.0)
+    r2 = (p2.M / p2.A / (4.0/3.0 * pi * rho_liq))**(1.0/3.0)
+
+    v_r = abs(v1 - v2)
+    K = pi * (r1 + r2)**2 * v_r * E_H80(r1, r2) * E_S09(r1, r2, v_r, rho_liq, T_parcel)
+
+    p_crit = max(p1.A, p2.A) * K / V_parcel * dt
+    p_crit = p_crit * nptcl * (nptcl - 1) / (half_length * 2)
+
+    return p_crit > np.random.random(), p_crit
+
+
+def determine_aggregation(p1, p2, v1, v2, dt, V_parcel, nptcl, half_length):
+    """
+    Determine if ice-ice aggregation occurs.
+
+    Following Shima et al. (2020) and SAM LCM.
+    """
+    E_agg = 0.1  # Aggregation efficiency (Morrison and Grabowski 2010)
+
+    # Projected areas
+    A1 = pi * max(p1.aaxis, p1.caxis)**2 * (p1.dns / rho_ice)**np.exp(-p1.caxis/p1.aaxis)
+    A2 = pi * max(p2.aaxis, p2.caxis)**2 * (p2.dns / rho_ice)**np.exp(-p2.caxis/p2.aaxis)
+
+    v_r = abs(v1 - v2)
+
+    # Aggregation kernel (Shima et al. 2020, Eq. 59)
+    K_agg = E_agg * (np.sqrt(A1) + np.sqrt(A2))**2 * v_r
+
+    p_crit = max(p1.A, p2.A) * K_agg / V_parcel * dt
+    p_crit = p_crit * nptcl * (nptcl - 1) / (half_length * 2)
+
+    return p_crit > np.random.random(), p_crit
+
+
+def update_aggregation(p1, p2, agg_ts):
+    """
+    Update particles after aggregation.
+
+    Larger crystal collects smaller crystal.
+    Following Shima et al. (2020).
+    """
+    # Determine which is larger
+    if max(p1.aaxis, p1.caxis) > max(p2.aaxis, p2.caxis):
+        p_large, p_small = p1, p2
+    else:
+        p_large, p_small = p2, p1
+
+    x_large = p_large.M / p_large.A
+    x_small = p_small.M / p_small.A
+
+    # Volumes
+    V_large = 4.0/3.0 * pi * p_large.aaxis**2 * p_large.caxis
+    V_small = 4.0/3.0 * pi * p_small.aaxis**2 * p_small.caxis
+
+    # New apparent density
+    rho_max = (x_large + x_small) / (V_large + V_small)
+
+    # Update larger particle
+    if p_large.caxis / p_large.aaxis <= 1.0:
+        # Plate-like aggregate
+        new_caxis = p_large.caxis + min(p_small.aaxis, p_small.caxis)
+        rho_apparent = min(rho_max, rho_ice)
+        p_large.caxis = (x_large + x_small) / (4.0/3.0 * pi * rho_apparent * p_large.aaxis**2)
+    else:
+        # Column-like aggregate
+        new_aaxis = p_large.aaxis + min(p_small.aaxis, p_small.caxis)
+        rho_apparent = min(rho_max, rho_ice)
+        p_large.aaxis = np.sqrt((x_large + x_small) / (4.0/3.0 * pi * rho_apparent * p_large.caxis))
+
+    p_large.dns = rho_apparent
+    p_large.M = p_large.M + p_large.A * x_small
+    p_large.Ns = p_large.Ns + p_large.A * (p_small.Ns / p_small.A)
+
+    # Update smaller particle
+    p_small.A = p_small.A - p_large.A
+    p_small.M = p_small.M - p_large.A * x_small
+    p_small.Ns = max(0, p_small.Ns - p_large.A * (p_small.Ns / max(p_small.A, 1)))
+
+    agg_ts += p_large.A * x_small
+
+    return p1, p2, agg_ts
+
+
+def determine_riming(p1, p2, v1, v2, dt, V_parcel, nptcl, half_length, T_parcel, rho_air):
+    """
+    Determine if ice-liquid riming occurs.
+
+    Following Shima et al. (2020) and SAM LCM.
+    """
+    # Identify ice and liquid particles
+    if p1.micro_type < 0:
+        p_ice, p_liq = p1, p2
+        v_ice, v_liq = v1, v2
+    else:
+        p_ice, p_liq = p2, p1
+        v_ice, v_liq = v2, v1
+
+    # Droplet radius
+    r_liq = (p_liq.M / p_liq.A / (4.0/3.0 * pi * rho_liq))**(1.0/3.0)
+
+    # Ice crystal equivalent radius
+    r_ice = (p_ice.aaxis**2 * p_ice.caxis)**(1.0/3.0)
+
+    # Geometric cross section (Shima et al. 2020, Eq. 38)
+    phi = p_ice.caxis / p_ice.aaxis
+    Ace = pi * p_ice.aaxis * max(p_ice.aaxis, p_ice.caxis)
+    A_proj = Ace * (p_ice.dns / rho_ice)**np.exp(-phi)
+    A_rime = pi * (p_ice.aaxis + r_liq) * (max(p_ice.aaxis, p_ice.caxis) + r_liq) - (Ace - A_proj)
+
+    # Riming efficiency (simplified)
+    E_rime = 0.5  # Typical value
+
+    v_r = abs(v_ice - v_liq)
+    K_rime = E_rime * A_rime * v_r
+
+    p_crit = max(p1.A, p2.A) * K_rime / V_parcel * dt
+    p_crit = p_crit * nptcl * (nptcl - 1) / (half_length * 2)
+
+    return p_crit > np.random.random(), p_crit
+
+
+def update_riming(p1, p2, rim_ts, T_parcel):
+    """
+    Update particles after riming.
+
+    Ice crystal collects liquid droplet, releases latent heat.
+    Following Shima et al. (2020).
+    """
+    # Identify ice and liquid
+    if p1.micro_type < 0:
+        p_ice, p_liq = p1, p2
+    else:
+        p_ice, p_liq = p2, p1
+
+    x_liq = p_liq.M / p_liq.A
+    x_ice = p_ice.M / p_ice.A
+
+    # Droplet radius
+    r_liq = (x_liq / (4.0/3.0 * pi * rho_liq))**(1.0/3.0)
+
+    # Ice volume
+    V_ice = 4.0/3.0 * pi * p_ice.aaxis**2 * p_ice.caxis
+
+    # Rime density (simplified Heymsfield-Pflaum parameterization)
+    rho_rime = min(rho_ice, 100.0 + 900.0 * min(r_liq / 50e-6, 1.0))
+
+    # New apparent density
+    rho_new = (x_ice + x_liq) / (V_ice + x_liq / rho_rime)
+    rho_new = min(rho_new, rho_ice)
+
+    # Update ice crystal axes
+    phi = p_ice.caxis / p_ice.aaxis
+
+    if phi <= 1.0:
+        # Plate: increase c-axis
+        p_ice.caxis = (V_ice + x_liq / rho_rime) / (4.0/3.0 * pi * p_ice.aaxis**2)
+    else:
+        # Column: increase a-axis
+        p_ice.aaxis = np.sqrt((V_ice + x_liq / rho_rime) / (4.0/3.0 * pi * p_ice.caxis))
+
+    p_ice.dns = rho_new
+    p_ice.M = p_ice.M + p_ice.A * x_liq
+    p_ice.Ns = p_ice.Ns + p_ice.A * (p_liq.Ns / p_liq.A)
+
+    # Update liquid particle
+    p_liq.A = p_liq.A - p_ice.A
+    p_liq.M = p_liq.M - p_ice.A * x_liq
+    p_liq.Ns = max(0, p_liq.Ns - p_ice.A * (p_liq.Ns / max(p_liq.A, 1)))
+
+    rim_ts += p_ice.A * x_liq
+
+    return p1, p2, rim_ts

@@ -28,9 +28,27 @@ alpha_m = 0.5 # gas kinetic correction of water vapor diffusion (deposition coef
 N_l =  N_avogadro * rho_liq / molecular_weight_water, # number of water molecules per volume of water
 m_w = molecular_weight_water / N_avogadro # mass of a water molecule
 n_s = 1.0E19 # concentration of water molecules in contact with surface of ice germ/nucleus; values from 5.85E18 to 1.0E19 are found in the literature
-sigma_stefan_boltzmann = 5.670374419E-8 # (in W/m2/T4) Stefan Boltzmann konstant 
+sigma_stefan_boltzmann = 5.670374419E-8 # (in W/m2/T4) Stefan Boltzmann konstant
 beta_env = 1.0E-5
 vanthoff_aero = 2.00
+
+#-------------------------------------------------------
+# Ice nucleation parameters (Kuhn 2011, SAM LCM)
+#-------------------------------------------------------
+# Homogeneous freezing parameters
+nv_hom = 3.35E28      # Number concentration of water molecules (#/m^3)
+av_hom = -2.323E-18   # Fit parameter 1 (J)
+bv_hom = -1.075E-20   # Fit parameter 2 (J/K)
+dw_hom = -2.13E-20    # Perturbation in free energy of freezing (J)
+srfthick = 2.5E-9     # Thickness of "droplet surface layer" (m)
+T_hom_threshold = 239.1  # Homogeneous freezing threshold (K), ~-34°C
+
+# ABIFM immersion freezing parameters (Knopf & Alpert, 2013)
+c_ABIFM = -4.0        # Empirical constant for ABIFM
+m_ABIFM = 35.0        # Empirical constant for ABIFM
+
+# Latent heat of fusion
+l_f = l_s - l_v       # Latent heat of fusion (J/kg) ~333000 J/kg
 
 #sea-salt aerosol
 rho_aero = 2170.0 # density (kg/m3) 2.17 g/cm3
