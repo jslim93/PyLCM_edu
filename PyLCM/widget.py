@@ -168,3 +168,62 @@ def plot_widgets_settings(nt):
     display(mode_plots_widget, 'For droplet spectra: set increment (e.g. 20: every 20th timestep a line is drawn): ', increment_widget,droplet_mode_widget)
     
     return mode_plots_widget, increment_widget,droplet_mode_widget
+
+# Aerosol preset configurations for quick setup
+# Maritime: few, large, hygroscopic CCN → large drops, fast rain
+# Continental: many, small, less hygroscopic → many small drops, suppressed rain
+# Arctic: ultra-clean → very few CCN, extreme drizzle behavior
+AEROSOL_PRESETS = {
+    'Maritime': {
+        'N':     [100.0,  20.0,   0.0,   0.0],
+        'mu':    [0.050,  0.250,  0.001, 0.0],
+        'sigma': [2.0,    1.8,    0.01,  0.0],
+        'kappa': [1.0,    1.2,    1.6,   1.6],
+    },
+    'Continental': {
+        'N':     [3200.0, 2900.0, 0.3,   0.0],
+        'mu':    [0.016,  0.068,  0.920, 0.0],
+        'sigma': [2.1,    2.0,    2.2,   0.0],
+        'kappa': [0.14,   0.3,    0.7,   1.6],
+    },
+    'Arctic': {
+        'N':     [15.0,   5.0,    0.0,   0.0],
+        'mu':    [0.030,  0.100,  0.001, 0.0],
+        'sigma': [1.8,    1.5,    0.01,  0.0],
+        'kappa': [0.4,    0.6,    1.6,   1.6],
+    },
+}
+
+def preset_input(gridwidget):
+    """Dropdown to load preset aerosol configurations into the grid widget."""
+    style = {'description_width': 'initial'}
+    preset_widget = widgets.Dropdown(
+        options=['Custom'] + list(AEROSOL_PRESETS.keys()),
+        value='Custom',
+        description='Aerosol preset:',
+        style=style
+    )
+
+    def on_preset_change(change):
+        if change['new'] in AEROSOL_PRESETS:
+            p = AEROSOL_PRESETS[change['new']]
+            for mode in range(4):
+                gridwidget[1, mode].value = p['N'][mode]
+                gridwidget[2, mode].value = p['mu'][mode]
+                gridwidget[3, mode].value = p['sigma'][mode]
+                gridwidget[4, mode].value = p['kappa'][mode]
+
+    preset_widget.observe(on_preset_change, names='value')
+    display(preset_widget)
+    return preset_widget
+
+def ablation_settings():
+    """Ablation Lab: toggle individual physics terms on/off to study their effect."""
+    style = {'description_width': 'initial'}
+    kelvin_widget = widgets.Checkbox(description='Curvature (Kelvin) effect', value=True, style=style)
+    solute_widget = widgets.Checkbox(description='Solute (Raoult) effect', value=True, style=style)
+    E_const_widget = widgets.Checkbox(description='Constant collision efficiency (E=1)', value=False, style=style)
+    vt_simple_widget = widgets.Checkbox(description='Simplified terminal velocity (Stokes)', value=False, style=style)
+
+    display('Ablation Lab - Physics toggles:', kelvin_widget, solute_widget, E_const_widget, vt_simple_widget)
+    return kelvin_widget, solute_widget, E_const_widget, vt_simple_widget

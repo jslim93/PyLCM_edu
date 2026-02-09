@@ -6,7 +6,7 @@ from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
  
-def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel):
+def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel, switch_E_constant=False, switch_vt_simple=False):
 
     #shuffle the particle list for LSM (linear sampling method)
     particles.shuffle(particles_list)
@@ -31,7 +31,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         check_collection = False
         
         # Find out what kind of interaction (or none) takes place
-        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl)
+        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple)
 
         if check_final:
             
@@ -172,25 +172,30 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
 
 import math
 import numpy as np
-def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl):
+def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant=False, switch_vt_simple=False):
     # Use actual parcel density and volume (not hardcoded values)
     # V_parcel = air_mass / rho_parcel, where air_mass = 100 kg by convention
     V_parcel = 100.0 / rho_parcel
 
     check_final = False
     check_collection = False
-    
-    # Coalescence
-    #if particle1.micro_type > 0 and particle2.micro_type > 0:
+
     R_n = (particle1.M / particle1.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
     R_m = (particle2.M / particle2.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
-    
-    v_r1 = ws_drops_beard(R_n, rho_parcel, rho_liq, p_env, T_parcel)
-    v_r2 = ws_drops_beard(R_m, rho_parcel, rho_liq, p_env, T_parcel)
-    
+
+    # Terminal velocity: Beard (1976) or simplified Stokes drag
+    if switch_vt_simple:
+        v_r1 = ws_drops_stokes(R_n, rho_parcel, rho_liq)
+        v_r2 = ws_drops_stokes(R_m, rho_parcel, rho_liq)
+    else:
+        v_r1 = ws_drops_beard(R_n, rho_parcel, rho_liq, p_env, T_parcel)
+        v_r2 = ws_drops_beard(R_m, rho_parcel, rho_liq, p_env, T_parcel)
+
     v_r = abs(v_r1 - v_r2)
 
-    K = pi * (R_m + R_n) ** 2 * v_r * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
+    # Collision efficiency: Hall (1980) lookup or constant E=1
+    E_coll = 1.0 if switch_E_constant else E_H80(R_m, R_n)
+    K = pi * (R_m + R_n) ** 2 * v_r * E_coll * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
     p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
@@ -341,3 +346,11 @@ def ws_drops_beard(radius, rho_parcel, rho_liq, p_env, T_parcel):
         ws_drops_beard = eta * NRe / (rho_parcel * diameter)
 
     return ws_drops_beard
+
+def ws_drops_stokes(radius, rho_parcel, rho_liq):
+    # Simplified Stokes terminal velocity (Ablation Lab mode)
+    # Pure Stokes drag without Cunningham correction or empirical regimes
+    # v_t = 2/9 * (rho_liq - rho_air) * g * r^2 / eta
+    eta = 1.818e-5  # dynamic viscosity of air at ~20C (kg/m/s)
+    diameter = max(2.0 * radius, 0.1e-6)
+    return (rho_liq - rho_parcel) * g * diameter**2 / (18.0 * eta)
