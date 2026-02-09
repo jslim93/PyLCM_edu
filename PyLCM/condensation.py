@@ -3,10 +3,9 @@ import sys
 from numba import jit
 from PyLCM.parameters import *
 from PyLCM.micro_particle import *
-from scipy.optimize import newton
 
 # Diffusional growth of aerosols, droplets
-def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts, switch_kappa_koehler):
+def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass_parcel, S_lst, rho_aero,kohler_activation_radius, con_ts, act_ts, evp_ts, dea_ts, switch_kappa_koehler, switch_kelvin=True, switch_solute=True):
     
     dq_liq = 0
     # Get supersaturation (via saturated water vapour pressure (e_s) and water vapour pressure of the parcel (e_a))
@@ -43,6 +42,12 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
             bfactor = particle.kappa
         else:
             bfactor = vanthoff_aero * rho_aero * molecular_weight_water / (rho_liq * molecular_weight_aero) # Solute effect
+
+        # Ablation Lab: disable individual Koehler terms
+        if not switch_kelvin:
+            afactor = 0.0
+        if not switch_solute:
+            bfactor = 0.0
         
         # Initial radius
         r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq)) ** 0.33333333333 # Droplet radius
@@ -82,28 +87,37 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         
     return particles_list, T_parcel, q_parcel, S_lst, con_ts, act_ts, evp_ts, dea_ts 
 
+@jit(nopython=True, cache=True)
 def esatw(T):
     # Saturation water vapour pressure (Pa) (Flatau et.al, 1992, JAM)
-    a = [6.11239921, 0.443987641, 0.142986287e-1,
-         0.264847430e-3, 0.302950461e-5, 0.206739458e-7,
-         0.640689451e-10, -0.952447341e-13, -0.976195544e-15]
+    a0 = 6.11239921
+    a1 = 0.443987641
+    a2 = 0.142986287e-1
+    a3 = 0.264847430e-3
+    a4 = 0.302950461e-5
+    a5 = 0.206739458e-7
+    a6 = 0.640689451e-10
+    a7 = -0.952447341e-13
+    a8 = -0.976195544e-15
 
     dT = T - 273.15
-    esatw = a[0] + dT * (a[1] + dT * (a[2] + dT * (a[3] + dT * (a[4] + dT * (a[5] + dT * (a[6] + dT * (a[7] + a[8] * dT)))))))
-    esatw *= 100.0
+    result = a0 + dT * (a1 + dT * (a2 + dT * (a3 + dT * (a4 + dT * (a5 + dT * (a6 + dT * (a7 + a8 * dT)))))))
+    result *= 100.0
 
-    return esatw
+    return result
 
+@jit(nopython=True, cache=True)
 def sigma_air_liq(tabs):
     # Surface tension between liquid water and air (in J/m2)
     tabs_c = tabs - 273.15
-    
-    # Pruppacher and Klett (1997), Eq. 5-12
-    sigma_air_liq = 75.93 + 0.115 * tabs_c    + 6.818e-2 * tabs_c**2 + 6.511e-3 * tabs_c**3 + 2.933e-4 * tabs_c**4 + 6.283e-6 * tabs_c**5 + 5.285e-8 * tabs_c**6
-    sigma_air_liq = sigma_air_liq * 1.0E-3
-    
-    return(sigma_air_liq)
 
+    # Pruppacher and Klett (1997), Eq. 5-12
+    result = 75.93 + 0.115 * tabs_c + 6.818e-2 * tabs_c**2 + 6.511e-3 * tabs_c**3 + 2.933e-4 * tabs_c**4 + 6.283e-6 * tabs_c**5 + 5.285e-8 * tabs_c**6
+    result = result * 1.0E-3
+
+    return result
+
+@jit(nopython=True, cache=True)
 def radius_liquid_euler(r_ini, dt_int, r0, G_pre, supersat, ventilation_effect, afactor, bfactor, r_aero, D_pre, radiation):
     r_eul = r_ini
     r_eul_old = r_ini
