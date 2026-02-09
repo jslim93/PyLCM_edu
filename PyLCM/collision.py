@@ -148,39 +148,35 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
     if (large_drop_size > mass_crit) and (small_drop_size < mass_crit):
         acc_ts += small_drop_size * ptcl_int1.A
 
-    ptcl_int1.M  = ptcl_int1.M  + ptcl_int2.M
-    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int2.Ns
-    ptcl_int1.A  = ptcl_int1.A  * 0.5
+    # Following Fortran reference: individual merged droplet mass = x1 + x2
+    # Halve weighting factors, assign combined individual mass to both
+    xn = ptcl_int1.M / ptcl_int1.A   # individual mass of particle 1
+    xm = ptcl_int2.M / ptcl_int2.A   # individual mass of particle 2
+    xsn = ptcl_int1.Ns / ptcl_int1.A # individual aerosol mass of particle 1
+    xsm = ptcl_int2.Ns / ptcl_int2.A # individual aerosol mass of particle 2
+
+    ptcl_int1.A  = ptcl_int1.A * 0.5
+    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A  # handles rounding like Fortran FLOOR
+
+    ptcl_int1.M  = (xn + xm) * ptcl_int1.A
+    ptcl_int2.M  = (xn + xm) * ptcl_int2.A
+    ptcl_int1.Ns = (xsn + xsm) * ptcl_int1.A
+    ptcl_int2.Ns = (xsn + xsm) * ptcl_int2.A
     
-    ptcl_int2.M  = ptcl_int1.M  * 0.5
-    ptcl_int2.Ns = ptcl_int1.Ns * 0.5
-    ptcl_int2.A  = ptcl_int2.A  * 0.5
-    
-    ptcl_int1.M  = ptcl_int2.M 
-    ptcl_int1.Ns = ptcl_int2.Ns 
-    
-    #Update volume-mean averaged kappa
-    ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
-    ptcl_int2.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
+    #Update volume-mean averaged kappa (compute first, then assign to avoid sequential mutation)
+    new_kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa) / (v_ptcl1 + v_ptcl2)
+    ptcl_int1.kappa = new_kappa
+    ptcl_int2.kappa = new_kappa
 
     return(ptcl_int1, ptcl_int2, acc_ts, aut_ts)
 
 import math
 import numpy as np
 def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl):
-    # Constants
-    pi = math.pi
-    rho_liq = 1000.0
-    rho_ice = 917.0
-    rho_parcel = 1.0
-    g = 9.81
-    muelq = 1.8325e-5
-    V_parcel = 1.0
-    collection_kernel_micro = 'hall'
-    diss_rate_LEM = 0.0
-    switch_coll_breakup_micro = True
-    collision_timestep_error = False
-    
+    # Use actual parcel density and volume (not hardcoded values)
+    # V_parcel = air_mass / rho_parcel, where air_mass = 100 kg by convention
+    V_parcel = 100.0 / rho_parcel
+
     check_final = False
     check_collection = False
     
@@ -194,8 +190,7 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
     
     v_r = abs(v_r1 - v_r2)
 
-    if collection_kernel_micro.strip() == 'hall':
-        K = pi * (R_m + R_n) ** 2 * v_r * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
+    K = pi * (R_m + R_n) ** 2 * v_r * E_H80(R_m, R_n) * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
     p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
@@ -266,7 +261,7 @@ def E_H80(r1, r2):
 
     if ir < 15:
         if ir >= 1:
-            pp = (rmax - r0[ir-1]) / (r0[ir] - r0[ir-1])
+            pp = (rmax * 1.0E6 - r0[ir-1]) / (r0[ir] - r0[ir-1])
             qq = (rq - rat[iq-1]) / (rat[iq] - rat[iq-1])
             E = (1.0 - pp) * (1.0 - qq) * ecoll[ir-1, iq-1] + pp * (1.0 - qq) * ecoll[ir, iq-1] \
                 + qq * (1.0 - pp) * ecoll[ir-1, iq] + pp * qq * ecoll[ir, iq]

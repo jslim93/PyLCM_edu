@@ -12,7 +12,7 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
     # Get supersaturation (via saturated water vapour pressure (e_s) and water vapour pressure of the parcel (e_a))
     e_s = esatw( T_parcel )
     e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
-    V_parcel   = 100.0 /P_parcel / ( r_a * T_parcel )
+    rho_parcel = P_parcel / ( r_a * T_parcel )
     supersat = e_a / e_s - 1.0
 
     # Thermal conductivity for water (according to Rogers and Yau, Table 7.1)
