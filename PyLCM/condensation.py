@@ -34,7 +34,12 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         
     for particle in particles_list:
         dq_liq = dq_liq - particle.M
-        
+
+        # Skip particles with negligible mass (can arise after collision merging)
+        if particle.Ns < 1.0e-200 or particle.A <= 0 or particle.M <= 0:
+            dq_liq = dq_liq + particle.M
+            continue
+
         # Computation of factors a and b related to Koehler curve
         afactor = 2.0 * sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel) # Curvature effect
 
@@ -87,6 +92,30 @@ def drop_condensation(particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_
         
     return particles_list, T_parcel, q_parcel, S_lst, con_ts, act_ts, evp_ts, dea_ts 
 
+def compute_tau_phase(particles_list, T_parcel, P_parcel, rho_liq, air_mass_parcel):
+    """Compute phase relaxation timescale (Arnason & Brown 1971).
+
+    tau_phase = 1 / (4*pi*D_v * sum(A_i * r_i) / V_parcel)
+    Used for adaptive timestep: dt_micro = 2 * tau_phase
+    """
+    diff_coeff = 0.211e-4 * (T_parcel / 273.15)**1.94 * (101325.0 / P_parcel)
+
+    sum_A_r = 0.0
+    for particle in particles_list:
+        if particle.M > 0.0 and particle.A > 0:
+            r_liq = (particle.M / (particle.A * 4.0 / 3.0 * np.pi * rho_liq))**0.33333333333
+            sum_A_r += particle.A * r_liq
+
+    rho_parcel = P_parcel / (287.0 * T_parcel)
+    V_parcel = air_mass_parcel / rho_parcel
+
+    if sum_A_r > 1.0e-20:
+        tau_phase = 1.0 / (4.0 * np.pi * diff_coeff * sum_A_r / V_parcel)
+    else:
+        tau_phase = 1.0e10  # very large when no droplets
+
+    return tau_phase
+
 @jit(nopython=True, cache=True)
 def esatw(T):
     # Saturation water vapour pressure (Pa) (Flatau et.al, 1992, JAM)
@@ -137,9 +166,9 @@ def radius_liquid_euler(r_ini, dt_int, r0, G_pre, supersat, ventilation_effect, 
             f = r_eul**2 - r_ini**2 - dt_eul * dr2dt
             dfdr2 = 1.0 - dt_eul * d2r2dtdr2
 
-            r_eul = (max(r_eul**2 - f / dfdr2, r_aero**2))**0.5  # Newton-Raphson scheme (2nd order)
+            r_eul = (max(r_eul**2 - f / dfdr2, max(r_aero**2, 1.0e-20)))**0.5  # Newton-Raphson scheme (2nd order)
 
-            rel_change = abs(r_eul - r_eul_old) / r_eul_old
+            rel_change = abs(r_eul - r_eul_old) / max(r_eul_old, 1.0e-20)
             r_eul_old = r_eul
             if rel_change < 1.0e-12:
                 break
