@@ -5,7 +5,6 @@ from PyLCM.parcel import *
 from PyLCM.condensation import *
 from Post_process.print_plot import *
 
-from scipy.stats import lognorm
 
 def model_init(dt_widget, nt_widget, Condensation_widget, Collision_widget, n_particles_widget, T_widget, P_widget, RH_widget, w_widget, z_widget, max_z_widget, mode_aero_init_widget, gridwidget, ascending_mode_widget, mode_displaytype_widget, switch_kappa_koehler):
     # Data of the model steering parameters is being read out from the widgets.
