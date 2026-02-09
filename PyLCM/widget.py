@@ -226,6 +226,7 @@ def ablation_settings():
     vt_simple_widget = widgets.Checkbox(description='Simplified terminal velocity (Stokes)', value=False, style=style)
     turb_kernel_widget = widgets.Checkbox(description='Turbulent collision kernel (Wang-Ayala)', value=False, style=style)
     epsilon_widget = widgets.BoundedFloatText(description='TKE dissipation rate ε (m²/s³):', min=0.0, max=0.1, step=0.001, value=0.01, style=style)
+    adaptive_dt_widget = widgets.Checkbox(description='Adaptive condensation substep (Arnason & Brown 1971)', value=False, style=style)
 
-    display('Ablation Lab - Physics toggles:', kelvin_widget, solute_widget, E_const_widget, vt_simple_widget, turb_kernel_widget, epsilon_widget)
-    return kelvin_widget, solute_widget, E_const_widget, vt_simple_widget, turb_kernel_widget, epsilon_widget
+    display('Ablation Lab - Physics toggles:', kelvin_widget, solute_widget, E_const_widget, vt_simple_widget, turb_kernel_widget, epsilon_widget, adaptive_dt_widget)
+    return kelvin_widget, solute_widget, E_const_widget, vt_simple_widget, turb_kernel_widget, epsilon_widget, adaptive_dt_widget
