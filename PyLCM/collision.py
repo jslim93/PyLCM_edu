@@ -6,7 +6,7 @@ from PyLCM.condensation import *
 from tqdm import tqdm
 import itertools
  
-def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel, switch_E_constant=False, switch_vt_simple=False):
+def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel, switch_E_constant=False, switch_vt_simple=False, switch_turb_kernel=False, epsilon_turb=0.0):
 
     #shuffle the particle list for LSM (linear sampling method)
     particles.shuffle(particles_list)
@@ -31,7 +31,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         check_collection = False
         
         # Find out what kind of interaction (or none) takes place
-        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple)
+        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple, switch_turb_kernel, epsilon_turb)
 
         if check_final:
             
@@ -172,7 +172,7 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
 
 import math
 import numpy as np
-def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant=False, switch_vt_simple=False):
+def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant=False, switch_vt_simple=False, switch_turb_kernel=False, epsilon_turb=0.0):
     # Use actual parcel density and volume (not hardcoded values)
     # V_parcel = air_mass / rho_parcel, where air_mass = 100 kg by convention
     V_parcel = 100.0 / rho_parcel
@@ -195,7 +195,15 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
 
     # Collision efficiency: Hall (1980) lookup or constant E=1
     E_coll = 1.0 if switch_E_constant else E_H80(R_m, R_n)
-    K = pi * (R_m + R_n) ** 2 * v_r * E_coll * E_S09(R_m, R_n, v_r, rho_liq,T_parcel)
+
+    # Collection kernel: standard gravitational or Wang-Ayala turbulent
+    if switch_turb_kernel and epsilon_turb > 1.0e-10:
+        # Estimate TKE from epsilon: urms = 2.02*(eps/0.04)^(1/3), tke = 1.5*urms^2
+        urms_est = 2.02 * (epsilon_turb / 0.04)**(1.0 / 3.0)
+        tke_est = 1.5 * urms_est**2
+        K = E_coll * gck(R_n, R_m, v_r1, v_r2, epsilon_turb, tke_est) * E_turb(R_n, R_m, epsilon_turb) * E_S09(R_m, R_n, v_r, rho_liq, T_parcel)
+    else:
+        K = pi * (R_m + R_n) ** 2 * v_r * E_coll * E_S09(R_m, R_n, v_r, rho_liq, T_parcel)
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
     p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
@@ -354,3 +362,242 @@ def ws_drops_stokes(radius, rho_parcel, rho_liq):
     eta = 1.818e-5  # dynamic viscosity of air at ~20C (kg/m/s)
     diameter = max(2.0 * radius, 0.1e-6)
     return (rho_liq - rho_parcel) * g * diameter**2 / (18.0 * eta)
+
+
+# =====================================================================
+# Wang-Ayala turbulent collision kernel
+# Ayala et al. (2008, New J. Phys.) + Wang & Grabowski (2009, QJRMS)
+# Ported from SAM-LCM Fortran reference (micro_coll.f90)
+# =====================================================================
+
+def phi_w(a, b, vsett, tau0):
+    """Helper function for the Ayala et al. (2008) analytical model."""
+    aa1 = 1.0 / tau0 + 1.0 / a + vsett / b
+    return 1.0 / aa1 - 0.5 * vsett / b / aa1**2
+
+def zhi_func(a, b, vsett1, tau1, vsett2, tau2):
+    """Helper function for the Ayala et al. (2008) analytical model."""
+    aa1 = vsett2 / b - 1.0 / tau2 - 1.0 / a
+    aa2 = vsett1 / b + 1.0 / tau1 + 1.0 / a
+    aa3 = (vsett1 - vsett2) / b + 1.0 / tau1 + 1.0 / tau2
+    aa4 = (vsett2 / b)**2 - (1.0 / tau2 + 1.0 / a)**2
+    aa5 = vsett2 / b + 1.0 / tau2 + 1.0 / a
+    aa6 = 1.0 / tau1 - 1.0 / a + (1.0 / tau2 + 1.0 / a) * vsett1 / vsett2
+
+    result = ((1.0 / aa1 - 1.0 / aa2) * (vsett1 - vsett2) * 0.5 /
+              b / aa3**2 +
+              (4.0 / aa4 - 1.0 / aa5**2 - 1.0 / aa1**2) *
+              vsett2 * 0.5 / b / aa6 +
+              (2.0 * (b / aa2 - b / aa1) -
+               vsett1 / aa2**2 + vsett2 / aa1**2) * 0.5 / b / aa3)
+    return result
+
+def gck(r1, r2, ws1, ws2, epsilon, tke):
+    """General collection kernel (Ayala et al. 2008, NJP).
+
+    Computes turbulent radial relative velocity and radial distribution
+    function for two droplets with radii r1, r2 and terminal velocities ws1, ws2.
+
+    Args:
+        r1, r2: droplet radii (m)
+        ws1, ws2: terminal velocities (m/s)
+        epsilon: TKE dissipation rate (m^2/s^3)
+        tke: turbulent kinetic energy (m^2/s^2)
+
+    Returns:
+        General collection kernel (m^3/s), without collision efficiency.
+    """
+    rho_dummy = 1.2  # reference air density for kinematic viscosity
+
+    urms = math.sqrt(2.0 / 3.0 * tke)
+
+    vis_kin = muelq / rho_dummy  # kinematic viscosity
+
+    lam = urms * math.sqrt(15.0 * vis_kin / epsilon)       # Taylor microscale
+    lambda_re = urms**2 * math.sqrt(15.0 / epsilon / vis_kin)  # Taylor-Re
+    tl = urms**2 / epsilon
+    lf = 0.5 * urms**3 / epsilon
+    tauk = math.sqrt(vis_kin / epsilon)
+    eta = (vis_kin**3 / epsilon)**0.25
+    vk = eta / tauk
+
+    ao = (11.0 + 7.0 * lambda_re) / (205.0 + lambda_re)
+    tt = math.sqrt(2.0 * lambda_re / (math.sqrt(15.0) * ao)) * tauk
+
+    tau1 = ws1 / g   # inertial time scale
+    st1 = tau1 / tauk  # Stokes number
+    tau2 = ws2 / g
+    st2 = tau2 / tauk
+
+    # Average radial relative velocity at contact (wrfin)
+    z = tt / tl
+    be = math.sqrt(2.0) * lam / lf
+    bbb = math.sqrt(1.0 - 2.0 * be**2)
+    d1 = (1.0 + bbb) / (2.0 * bbb)
+    e1 = lf * (1.0 + bbb) * 0.5
+    d2 = (1.0 - bbb) * 0.5 / bbb
+    e2 = lf * (1.0 - bbb) * 0.5
+    ccc = math.sqrt(1.0 - 2.0 * z**2)
+    b1 = (1.0 + ccc) * 0.5 / ccc
+    c1 = tl * (1.0 + ccc) * 0.5
+    b2 = (1.0 - ccc) * 0.5 / ccc
+    c2 = tl * (1.0 - ccc) * 0.5
+
+    v1 = ws1
+    t1 = tau1
+    v2 = ws2
+    t2 = tau2
+    rrp = r1 + r2
+
+    v1xysq = (b1 * d1 * phi_w(c1, e1, v1, t1) - b1 * d2 * phi_w(c1, e2, v1, t1)
+              - b2 * d1 * phi_w(c2, e1, v1, t1) + b2 * d2 * phi_w(c2, e2, v1, t1))
+    v1xysq = v1xysq * urms**2 / t1
+    vrms1xy = math.sqrt(v1xysq)
+
+    v2xysq = (b1 * d1 * phi_w(c1, e1, v2, t2) - b1 * d2 * phi_w(c1, e2, v2, t2)
+              - b2 * d1 * phi_w(c2, e1, v2, t2) + b2 * d2 * phi_w(c2, e2, v2, t2))
+    v2xysq = v2xysq * urms**2 / t2
+    vrms2xy = math.sqrt(v2xysq)
+
+    # Sort so v1 >= v2 for the cross-correlation term
+    if ws1 >= ws2:
+        v1, t1 = ws1, tau1
+        v2, t2 = ws2, tau2
+    else:
+        v1, t1 = ws2, tau2
+        v2, t2 = ws1, tau1
+
+    v1v2xy = (b1 * d1 * zhi_func(c1, e1, v1, t1, v2, t2)
+              - b1 * d2 * zhi_func(c1, e2, v1, t1, v2, t2)
+              - b2 * d1 * zhi_func(c2, e1, v1, t1, v2, t2)
+              + b2 * d2 * zhi_func(c2, e2, v1, t1, v2, t2))
+    fr = d1 * math.exp(-rrp / e1) - d2 * math.exp(-rrp / e2)
+    v1v2xy = v1v2xy * fr * urms**2 / tau1 / tau2
+    wrtur2xy = vrms1xy**2 + vrms2xy**2 - 2.0 * v1v2xy
+    if wrtur2xy < 0.0:
+        wrtur2xy = 0.0
+    wrgrav2 = pi / 8.0 * (ws2 - ws1)**2
+    wrfin = math.sqrt((2.0 / pi) * (wrtur2xy + wrgrav2))
+
+    # Radial distribution function (grfin)
+    sst = max(st1, st2)
+
+    xx = -0.1988 * sst**4 + 1.5275 * sst**3 - 4.2942 * sst**2 + 5.3406 * sst
+    if xx < 0.0:
+        xx = 0.0
+    yy = 0.1886 * math.exp(20.306 / lambda_re)
+
+    c1_gr = xx / (g / vk * tauk)**yy
+
+    ao_gr = ao + (pi / 8.0) * (g / vk * tauk)**2
+    fao_gr = 20.115 * math.sqrt(ao_gr / lambda_re)
+    rc = math.sqrt(fao_gr * abs(st2 - st1)) * eta
+
+    grfin = ((eta**2 + rc**2) / (rrp**2 + rc**2))**(c1_gr * 0.5)
+    if grfin < 1.0:
+        grfin = 1.0
+
+    return 2.0 * pi * rrp**2 * wrfin * grfin
+
+def E_turb(r1, r2, epsilon):
+    """Turbulent collision efficiency enhancement (Wang & Grabowski 2009, QJRMS).
+
+    Lookup tables at epsilon = 100 and 400 cm^2/s^3 (0.01 and 0.04 m^2/s^3),
+    with bilinear interpolation in (collector radius, ratio) and linear in epsilon.
+
+    Args:
+        r1, r2: droplet radii (m)
+        epsilon: TKE dissipation rate (m^2/s^3)
+
+    Returns:
+        Turbulent enhancement factor (>= 1.0).
+    """
+    r0 = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 100.0]
+    rat = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    # Tabulated enhancement at epsilon = 100 cm^2/s^3 (0.01 m^2/s^3)
+    # ecoll_100[ir][iq]: ir = collector radius index, iq = ratio index
+    ecoll_100 = [
+        [1.74,  1.46,  1.32,  1.250, 1.186, 1.045, 1.070, 1.000, 1.223, 1.570, 20.3],
+        [1.74,  1.46,  1.32,  1.250, 1.186, 1.045, 1.070, 1.000, 1.223, 1.570, 20.3],
+        [1.773, 1.421, 1.245, 1.148, 1.066, 1.000, 1.030, 1.054, 1.117, 1.244, 14.6],
+        [1.49,  1.245, 1.123, 1.087, 1.060, 1.014, 1.038, 1.042, 1.069, 1.166, 8.61],
+        [1.207, 1.069, 1.000, 1.025, 1.056, 1.028, 1.046, 1.029, 1.021, 1.088, 2.60],
+        [1.207, 1.069, 1.000, 1.025, 1.056, 1.028, 1.046, 1.029, 1.021, 1.088, 2.60],
+        [1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0],
+    ]
+
+    # Tabulated enhancement at epsilon = 400 cm^2/s^3 (0.04 m^2/s^3)
+    ecoll_400 = [
+        [4.976, 2.984, 1.988, 1.490, 1.249, 1.139, 1.220, 1.325, 1.716, 3.788, 36.52],
+        [4.976, 2.984, 1.988, 1.490, 1.249, 1.139, 1.220, 1.325, 1.716, 3.788, 36.52],
+        [3.593, 2.181, 1.475, 1.187, 1.088, 1.130, 1.190, 1.267, 1.345, 1.501, 19.16],
+        [2.519, 1.691, 1.313, 1.156, 1.090, 1.091, 1.138, 1.165, 1.223, 1.311, 22.80],
+        [1.445, 1.201, 1.150, 1.126, 1.092, 1.051, 1.086, 1.063, 1.100, 1.120, 26.0],
+        [1.445, 1.201, 1.150, 1.126, 1.092, 1.051, 1.086, 1.063, 1.100, 1.120, 26.0],
+        [1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0],
+    ]
+
+    # Radius class index (r in microns)
+    r1_micro = r1 * 1.0e6
+    r2_micro = r2 * 1.0e6
+
+    ira1 = 7  # default: beyond table
+    for kr in range(7):
+        if r1_micro < r0[kr]:
+            ira1 = kr
+            break
+
+    ira2 = 7
+    for kr in range(7):
+        if r2_micro < r0[kr]:
+            ira2 = kr
+            break
+
+    # ir = index of the larger drop
+    ir = max(ira1, ira2)
+    rq = min(r1 / r2, r2 / r1)
+
+    # Ratio class index
+    iq = 1
+    for kq in range(1, 11):
+        if rq <= rat[kq]:
+            iq = kq
+            break
+
+    y1 = 1.0  # enhancement at epsilon = 0
+
+    if ir < 7:
+        if ir >= 1:
+            rmax_micro = max(r1_micro, r2_micro)
+            pp = (rmax_micro - r0[ir - 1]) / (r0[ir] - r0[ir - 1])
+            qq = (rq - rat[iq - 1]) / (rat[iq] - rat[iq - 1])
+            y2 = ((1.0 - pp) * (1.0 - qq) * ecoll_100[ir - 1][iq - 1] +
+                  pp * (1.0 - qq) * ecoll_100[ir][iq - 1] +
+                  qq * (1.0 - pp) * ecoll_100[ir - 1][iq] +
+                  pp * qq * ecoll_100[ir][iq])
+            y3 = ((1.0 - pp) * (1.0 - qq) * ecoll_400[ir - 1][iq - 1] +
+                  pp * (1.0 - qq) * ecoll_400[ir][iq - 1] +
+                  qq * (1.0 - pp) * ecoll_400[ir - 1][iq] +
+                  pp * qq * ecoll_400[ir][iq])
+        else:
+            qq = (rq - rat[iq - 1]) / (rat[iq] - rat[iq - 1])
+            y2 = (1.0 - qq) * ecoll_100[0][iq - 1] + qq * ecoll_100[0][iq]
+            y3 = (1.0 - qq) * ecoll_400[0][iq - 1] + qq * ecoll_400[0][iq]
+    else:
+        qq = (rq - rat[iq - 1]) / (rat[iq] - rat[iq - 1])
+        y2 = (1.0 - qq) * ecoll_100[6][iq - 1] + qq * ecoll_100[6][iq]
+        y3 = (1.0 - qq) * ecoll_400[6][iq - 1] + qq * ecoll_400[6][iq]
+
+    # Linear interpolation in epsilon (m^2/s^3)
+    if epsilon <= 0.01:
+        result = (epsilon - 0.01) / (0.0 - 0.01) * y1 + (epsilon - 0.0) / (0.01 - 0.0) * y2
+    elif epsilon <= 0.06:
+        result = (epsilon - 0.04) / (0.01 - 0.04) * y2 + (epsilon - 0.01) / (0.04 - 0.01) * y3
+    else:
+        result = (0.06 - 0.04) / (0.01 - 0.04) * y2 + (0.06 - 0.01) / (0.04 - 0.01) * y3
+
+    if result < 1.0:
+        result = 1.0
+
+    return result
