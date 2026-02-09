@@ -31,15 +31,12 @@ def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, max_z,theta_pro
             theta_env  = get_interp1d_var(z_parcel,z_env,theta_profiles)
             T_env      = theta_env * (P_parcel / p0) ** (r_a / cp)
             P_parcel   = P_parcel - P_parcel * g * dz / ( r_a * T_env )
-    elif ascending_mode=='sine': 
+    elif ascending_mode=='sine':
         # Sinusoidal oscillation
         w_oscillate = w_parcel * np.pi / 2.0 * np.sin(np.pi * time / time_half_wave_parcel)
         dz = w_oscillate  * dt
         z_parcel = z_parcel + dz
-        if w_parcel > 0:
-            T_parcel = T_parcel - dz * g / cp
-        else:
-            T_parcel = T_parcel + dz * g / cp
+        T_parcel = T_parcel - dz * g / cp
             
         #change environmental pressure
         theta_env  = get_interp1d_var(z_parcel,z_env,theta_profiles)
@@ -57,10 +54,7 @@ def ascend_parcel(z_parcel, T_parcel,P_parcel,w_parcel,dt, time, max_z,theta_pro
             w_oscillate = w_parcel * np.pi / 2.0 * np.cos(np.pi * (time-t_start_oscillation) / time_half_wave_parcel + phase)
             dz = w_oscillate  * dt
             z_parcel = z_parcel + dz
-            if w_parcel > 0:
-                T_parcel = T_parcel - dz * g / cp
-            else:
-                T_parcel = T_parcel + dz * g / cp
+            T_parcel = T_parcel - dz * g / cp
 
         #change environmental pressure
         theta_env  = get_interp1d_var(z_parcel,z_env,theta_profiles)
