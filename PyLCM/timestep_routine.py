@@ -3,7 +3,7 @@
 
 import numpy as np
 import time
-import pylab as pl
+from tqdm import tqdm
 
 from PyLCM.parameters import *
 from PyLCM.micro_particle import *
@@ -35,11 +35,13 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
 
     # Create array for the drop radii evolution
 
+    time_array = np.arange(nt+1)*dt
+
     if display_mode == 'graphics':
         # Initialization of animation
         figure_item = animation_init(dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array)
 
-    for t in range(nt):
+    for t in tqdm(range(nt), desc="LCM timesteps", unit="step"):
         time = (t+1)*dt
         # Parcel ascending
         z_parcel, T_parcel,P_parcel = ascend_parcel(z_parcel, T_parcel,P_parcel, w_parcel, dt, time,max_z,theta_profiles, time_half_wave_parcel, ascending_mode)
@@ -77,8 +79,6 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
         RH_parcel_array[t+1] = RH_parcel
         q_parcel_array[t+1]  = q_parcel
         z_parcel_array[t+1]  = z_parcel
-                
-        time_array = np.arange(nt+1)*dt
 
         # Display of variables during runtime
         if display_mode == 'text_fast':

@@ -151,14 +151,14 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     line_increment = increment_widget.value
     nt_spec = nt / line_increment
     nt_spec = int(nt_spec)
-    cmap = cm.get_cmap('jet')
+    cmap = cm.get_cmap('viridis')
     norm = plt.Normalize(0, nt_spec - 1)
         
     # Spectras in user given timesteps (defined via line_increment) will be displayed
+    # Deepcopy so that values <= 0 are masked out only in the copy for the plot (and remain for the data output)
+    spectra_arr_nan = copy.deepcopy(spectra_arr)
+    spectra_arr_nan[np.where(spectra_arr_nan<=0)] = np.nan
     for i in range(nt_spec):
-        spectra_arr_nan = copy.deepcopy(spectra_arr) 
-        # Here a deepcopy is needed so that values <= 0 are masked out only in the copy for the plot (and remain for the data output)
-        spectra_arr_nan[np.where(spectra_arr_nan<=0)] = np.nan
         axs[1,1].plot(rm_spec*1e6, spectra_arr_nan[i*line_increment]/1e6, color=cmap(norm(i)))
         axs[1,1].set_yscale("log")
         axs[1,1].set_xscale("log")
@@ -178,7 +178,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     # Select the plot axis
     plotaxis = axs[1,1]
     # Get the colormap
-    cmap_spectra = plt.cm.get_cmap('jet')
+    cmap_spectra = plt.cm.get_cmap('viridis')
     # Normalize the colormap to the max. timestep, take into account the timestep interval dt (s)
     norm2 = plt.Normalize(vmin=0, vmax=np.max((nt_spec*line_increment-line_increment)*dt))
     # Produce mappable object
@@ -191,7 +191,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     if plot_mode=='time-series':
         axs[1,2].plot(time_array, con_ts, label = "Condensation", color='darkblue')
         #axs[1,2].plot(time_array, act_ts, label = "Activation", color='limegreen', linestyle=':')
-        axs[1,2].plot(time_array, evp_ts, label = "Evaporaton", color='brown')
+        axs[1,2].plot(time_array, evp_ts, label = "Evaporation", color='brown')
         #axs[1,2].plot(time_array, dea_ts, label = "Deactivation", color='black', linestyle='--')
         axs[1,2].set_xlabel("Time (s)")
         axs[1,2].set_ylabel("Conversion Rates (g kg$^{-1}$s$^{-1}$)")
@@ -200,7 +200,7 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     elif plot_mode=='vertical profile':
         axs[1,2].plot(con_ts, z_parcel_array, label = "Condensation", color='darkblue')
         #axs[1,2].plot(act_ts, z_parcel_array, label = "Activation", color='limegreen', linestyle=':')
-        axs[1,2].plot(evp_ts, z_parcel_array, label = "Evaporaton", color='brown')
+        axs[1,2].plot(evp_ts, z_parcel_array, label = "Evaporation", color='brown')
         #axs[1,2].plot(dea_ts, z_parcel_array, label = "Deactivation", color='black', linestyle='--')
         axs[1,2].set_xlabel("Conversion Rates (g kg$^{-1}$s$^{-1}$)")
         axs[1,2].set_ylabel("Height $z$ (m)")
@@ -235,4 +235,4 @@ def subplot_array_function(plot_mode, dt, nt, rm_spec, qa_ts, qc_ts, qr_ts, na_t
     
     
     fig.tight_layout()
-    fig.show()
+    plt.show()

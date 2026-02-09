@@ -13,7 +13,7 @@ def model_steering_input():
     
     # Create the widgets for the variables
     dt_widget      = widgets.BoundedFloatText(description='dt (s):', min = 0.0001, max = 5.0, value = 1.0, style=style)
-    nt_widget      = widgets.IntText(description='nt:', value = 3600, style=style)
+    nt_widget      = widgets.BoundedIntText(description='nt:', min=1, max=100000, value = 3600, style=style)
 
     Condensation_widget = widgets.Checkbox(description='Condensation', value=True, style=style)
     Collision_widget = widgets.Checkbox(description='Collision', value=False, style=style)
@@ -92,27 +92,28 @@ def grid_modes_input():
     # Column 0 for mode 1
     gridwidget[0, 0]= widgets.Button(description='Mode #1', disabled=False, button_style='info', tooltip='Heading', style=style)
     gridwidget[1, 0] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=118.0, style=style)
-    gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.019, style=style)
-    gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=3.3, style=style)
+    gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.001, max = 5.0, step = 0.001, value=0.019, style=style)
+    gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.01, max = 3.0, step = 0.1, value=3.3, style=style)
     gridwidget[4, 0] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     
     # Column 1 for mode 2
     gridwidget[0, 1]= widgets.Button(description='Mode #2', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 1] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=11.0, style=style)
-    gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.056, style=style)
-    gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=1.6, style=style)
+    gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.001, max = 5.0, step = 0.001, value=0.056, style=style)
+    gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.01, max = 3.0, step = 0.1, value=1.6, style=style)
     gridwidget[4, 1] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 2 for mode 3
     gridwidget[0, 2]= widgets.Button(description='Mode #3', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 2] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.01, value=0.72, style=style)
-    gridwidget[2, 2] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.1, value=0.46, style=style)
-    gridwidget[3, 2] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=2.2, style=style)
+    gridwidget[2, 2] = widgets.BoundedFloatText(description='mu (µm)', min = 0.001, max = 5.0, step = 0.1, value=0.46, style=style)
+    gridwidget[3, 2] = widgets.BoundedFloatText(description='sigma (-)', min = 0.01, max = 3.0, step = 0.1, value=2.2, style=style)
     gridwidget[4, 2] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 3 for mode 4
     gridwidget[0, 3]= widgets.Button(description='Mode #4', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 3] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=0, style=style)
     gridwidget[2, 3] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.1, value=0, style=style)
     gridwidget[3, 3] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=0, style=style)
+
     gridwidget[4, 3] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # An additional button will be added later below of these widgets for the plot of the cumulative distribution.
     # plotbutton_widget = widgets.Button(description='Plot cumulative distr.', disabled=False, button_style='info', tooltip='Plot cumulative distribution of all modes')
