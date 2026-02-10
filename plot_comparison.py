@@ -48,13 +48,13 @@ P_parcel = P0; z_parcel = z0; S_lst = 0.0
 
 dsd_times = [0, 300, 600, 900, 1200, 1500, 1800]
 dsd_snapshots = {}
-ts = {'t': [], 'qc': [], 'qr': [], 'Nc': [], 'Nr': [], 'T': [], 'rho': []}
+ts = {'t': [], 'qc': [], 'qr': [], 'Na': [], 'Nc': [], 'Nr': [], 'T': [], 'rho': []}
 
 # t=0
 rho_p0, V_p0, air_mass0 = parcel_rho(P0, T0)
 sp, qa, qc, qr, na, nc, nr, _, ra, rs = ts_analysis(particles_list, air_mass0, rm_spec, 60, n_ptcl)
 ts['t'].append(0); ts['qc'].append(qc); ts['qr'].append(qr)
-ts['Nc'].append(nc * rho_p0); ts['Nr'].append(nr * rho_p0)
+ts['Na'].append(na * rho_p0); ts['Nc'].append(nc * rho_p0); ts['Nr'].append(nr * rho_p0)
 ts['T'].append(T0 - 273.15); ts['rho'].append(rho_p0)
 dsd_snapshots[0] = get_radii(particles_list)
 
@@ -77,8 +77,9 @@ for t in range(nt):
         particles_list, air_mass, rm_spec, 60, n_ptcl)
     nc_cm3 = nc_v * rho_p
     nr_cm3 = nr_v * rho_p
+    na_cm3 = na * rho_p
     ts['t'].append(t+1); ts['qc'].append(qc_v); ts['qr'].append(qr_v)
-    ts['Nc'].append(nc_cm3); ts['Nr'].append(nr_cm3)
+    ts['Na'].append(na_cm3); ts['Nc'].append(nc_cm3); ts['Nr'].append(nr_cm3)
     ts['T'].append(T_parcel - 273.15); ts['rho'].append(rho_p)
 
     if (t+1) in dsd_times:
@@ -189,7 +190,7 @@ for i, t_target in enumerate(dsd_times):
             dlnr = np.diff(np.log(bins))
             counts, _ = np.histogram(radii_um, bins=bins)
             if t_target < len(ts['Nc']):
-                total_N = ts['Nc'][t_target] + ts['Nr'][t_target]
+                total_N = ts['Na'][t_target] + ts['Nc'][t_target] + ts['Nr'][t_target]
                 dNdlnr = counts / n_ptcl * total_N / dlnr
             else:
                 dNdlnr = counts / dlnr
