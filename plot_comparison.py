@@ -34,7 +34,7 @@ q0 = RH * e_s / (P0 - RH * e_s) * r_a / rv
 rm_spec = [1e-6, 25e-6]
 
 def get_radii(plist):
-    return np.array([(3.0 * p.M / (4.0 * np.pi * rho_liq))**(1.0/3.0) for p in plist])
+    return np.array([(3.0 * p.M / p.A / (4.0 * np.pi * rho_liq))**(1.0/3.0) for p in plist])
 
 # ============================================================
 # PHASE 1: Run PyLCM 10k
