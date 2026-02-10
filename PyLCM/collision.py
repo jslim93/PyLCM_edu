@@ -31,20 +31,20 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         check_collection = False
         
         # Find out what kind of interaction (or none) takes place
-        check_final, check_collection, v_r1, v_r2 = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple, switch_turb_kernel, epsilon_turb)
+        check_final, check_collection, v_r1, v_r2, gamma = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple, switch_turb_kernel, epsilon_turb)
 
         if check_final:
-            
+
             # A special treatment is necessary if weighting factors are identical
             if particle1.A == particle2.A:
-                
+
                 #add acc_ts and aut_ts for same weight factor
                 particle1, particle2, acc_ts, aut_ts = same_weights_update(particle1, particle2, acc_ts, aut_ts)
 
-            # Each droplet of the super-droplet with the smaller weighting factor collects 
+            # Each droplet of the super-droplet with the smaller weighting factor collects
             # one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
-                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2,  acc_ts, aut_ts)
+                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2, acc_ts, aut_ts, gamma)
         
         #Change droplet vertical location by subtracting their terminal velocity from the parcel velocity˛
         if sedi_removal:
@@ -75,37 +75,38 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
     
     return particles_list, acc_ts, aut_ts, precip_ts
 
-def liquid_update_collection(particle1, particle2,acc_ts, aut_ts):
-    
-    # _int1: gains total individual mass
-    # _int2: loses total mass, constant individual mass
+def liquid_update_collection(particle1, particle2, acc_ts, aut_ts, gamma=1):
+
+    # _int1: gains total individual mass (smaller A)
+    # _int2: loses total mass, constant individual mass (larger A)
     if particle1.A < particle2.A:
         ptcl_int1 = particle1
         ptcl_int2 = particle2
     else:
         ptcl_int1 = particle2
         ptcl_int2 = particle1
-    
+
     x_int = ptcl_int2.M / ptcl_int2.A
     xs_int = ptcl_int2.Ns / ptcl_int2.A
-    
+
     #Droplet volume for kappa collision estimation
     v_ptcl1 = ptcl_int1.M / ptcl_int1.A / rho_liq
     v_ptcl2 = ptcl_int2.M / ptcl_int2.A / rho_liq
-    
+
     # Update of M, A (water mass and particle number)
-    
-    #Increase of water mass due to collision
-    ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int
-    #Increase of Aerosol mass due to collision 
-    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int
+    # gamma: number of collisions (multi-collision, Shima et al. 2009)
+
+    #Increase of water mass due to collision (gamma collisions)
+    ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int * gamma
+    #Increase of Aerosol mass due to collision
+    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int * gamma
     #Update volume-mean averaged kappa
     ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
-    
-    #Decrease of number, aerosol and water mass due to collision 
-    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A
-    ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int
-    ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int
+
+    #Decrease of number, aerosol and water mass due to collision
+    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A * gamma
+    ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int * gamma
+    ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int * gamma
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
     
@@ -207,17 +208,29 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
 
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
     p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
-    
+
+    gamma = 0  # number of collisions
+
     x_rand = np.random.random()
-    
+
     if p_crit > x_rand:
         check_final = True
         check_collection = True
-            
-     #IF ( p_crit .GT. 1.0 )  THEN
-     #     collision_timestep_error = .TRUE.
-     #  ENDIF
-    return check_final, check_collection, v_r1, v_r2
+
+        if p_crit <= 1.0:
+            gamma = 1
+        else:
+            # Multi-collision: following SAM Fortran (Shima et al. 2009)
+            gamma = round(p_crit)  # NINT equivalent
+            gamma = max(gamma, 1)
+            # Limiter: ensure we don't collect more particles than available
+            # max(A) - gamma * min(A) >= 1
+            A_max = max(particle1.A, particle2.A)
+            A_min = min(particle1.A, particle2.A)
+            gamma_lim = max(int((A_max - 1) / A_min), 1)
+            gamma = min(gamma, gamma_lim)
+
+    return check_final, check_collection, v_r1, v_r2, gamma
 
 
 def E_H80(r1, r2):
