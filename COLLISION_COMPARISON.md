@@ -10,7 +10,7 @@ This document compares the collision-coalescence algorithms across three impleme
 | **SAM-LCM** (`micro_coll.f90`) | LSM | Yes (Shima 2009) | No (commented out) | O(N) |
 | **Fortran Box Model** (`func_coll.f90`) | Full enumeration | No | Yes | O(N^2) |
 
-**Key finding**: The multi-collision fix (gamma > 1 when p_crit > 1) reduced PyLCM's peak Nr from ~20.6 to ~6.2 /cm^3, dramatically improving agreement with the Fortran box model (peak Nr ~2.2 /cm^3). The remaining ~3x difference is attributable to LSM vs full enumeration and Monte Carlo variance.
+**Key finding**: The multi-collision fix (p_crit > 1 triggers multiple collisions per pair) reduced PyLCM's peak Nr from ~20.6 to ~6.2 /cm^3, dramatically improving agreement with the Fortran box model (peak Nr ~2.2 /cm^3). The remaining ~3x difference is attributable to LSM vs full enumeration and Monte Carlo variance.
 
 ---
 
@@ -87,23 +87,22 @@ p_crit = MAX(particles(n)%A, particles(m)%A) * K / V_parcel * dt_int
 ! No upscaling (full enumeration)
 ```
 
-### 3.3 Multi-Collision Handling (gamma)
+### 3.3 Multi-Collision Handling (p_crit)
 
 This was the critical fix. When p_crit > 1, multiple collisions should occur per pair.
 
 **PyLCM** (`collision.py:220-231`) - AFTER fix:
 ```python
 if p_crit <= 1.0:
-    gamma = 1
+    p_crit = 1
 else:
     # Multi-collision: following SAM Fortran (Shima et al. 2009)
-    gamma = round(p_crit)       # NINT equivalent
-    gamma = max(gamma, 1)
+    p_crit = max(round(p_crit), 1)  # NINT equivalent
     # Limiter: ensure we don't collect more particles than available
     A_max = max(particle1.A, particle2.A)
     A_min = min(particle1.A, particle2.A)
-    gamma_lim = max(int((A_max - 1) / A_min), 1)
-    gamma = min(gamma, gamma_lim)
+    p_crit_lim = max(int((A_max - 1) / A_min), 1)
+    p_crit = min(p_crit, p_crit_lim)
 ```
 
 **SAM** (`micro_coll.f90:720-737`):
@@ -125,7 +124,7 @@ IF (p_crit .GT. x_rand) THEN
    check_final      = .TRUE.
    check_collection = .TRUE.
 ENDIF
-! No multi-collision -- gamma is always implicitly 1
+! No multi-collision -- p_crit is always implicitly 1
 ! (Prints warning when p_crit > 1)
 ```
 
@@ -134,16 +133,15 @@ ENDIF
 **PyLCM** (`collision.py:78-131`) - `liquid_update_collection()`:
 ```python
 # Smaller A gains mass, larger A loses particles
-ptcl_int1.M  = ptcl_int1.M  + ptcl_int1.A * x_int * gamma
-ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int * gamma
-ptcl_int2.A  = ptcl_int2.A  - ptcl_int1.A * gamma
-ptcl_int2.M  = ptcl_int2.M  - ptcl_int1.A * x_int * gamma
-ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int * gamma
+ptcl_int1.M  = ptcl_int1.M  + ptcl_int1.A * x_int * p_crit
+ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int * p_crit
+ptcl_int2.A  = ptcl_int2.A  - ptcl_int1.A * p_crit
+ptcl_int2.M  = ptcl_int2.M  - ptcl_int1.A * x_int * p_crit
+ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int * p_crit
 ```
 
 **SAM** (`micro_coll.f90:779-785`) - `update_colescence()`:
 ```fortran
-! p_crit here is the gamma value (renamed after multi-collision logic)
 particle(n)%var(iM) = particle(n)%var(iM) + particle(n)%ivar(iA) * xm * p_crit
 particle(m)%var(iM) = particle(m)%var(iM) - particle(n)%ivar(iA) * xm * p_crit
 particle(n)%var(iN) = particle(n)%var(iN) + particle(n)%ivar(iA) * xsm * p_crit
@@ -151,11 +149,11 @@ particle(m)%var(iN) = particle(m)%var(iN) - particle(n)%ivar(iA) * xsm * p_crit
 particle(m)%ivar(iA) = particle(m)%ivar(iA) - particle(n)%ivar(iA) * p_crit
 ```
 
-Both are mathematically identical: the smaller-A superdroplet gains gamma individual masses from the larger-A superdroplet.
+Both are mathematically identical: the smaller-A superdroplet gains p_crit individual masses from the larger-A superdroplet.
 
 **Fortran Box Model** (`mod_collection.f90:443-448`):
 ```fortran
-! gamma = 1 always (no multi-collision)
+! p_crit = 1 always (no multi-collision)
 particles(n_int)%M  = particles(n_int)%M  + particles(n_int)%A * x_int
 particles(m_int)%A  = particles(m_int)%A  - particles(n_int)%A
 particles(m_int)%M  = particles(m_int)%M  - particles(n_int)%A * x_int
@@ -239,13 +237,13 @@ For N=10,000: LSM evaluates 5,000 pairs; full enumeration evaluates ~50,000,000 
 
 ### 4.2 The Multi-Collision Bug (Before Fix)
 
-**Before the fix**, PyLCM's `determine_collision()` returned only `check_final` and `check_collection` (booleans). When p_crit exceeded 1.0, a collision was registered, but only gamma=1 was applied to the mass transfer. This meant:
+**Before the fix**, PyLCM's `determine_collision()` returned only `check_final` and `check_collection` (booleans). When p_crit exceeded 1.0, a collision was registered, but only a single collision was applied to the mass transfer. This meant:
 
 - For p_crit = 5.0: only 1 collision occurred instead of 5
 - The LSM upscaling factor (N-1 ~ 9999) frequently pushed p_crit >> 1
 - Result: collisions were severely underestimated, leading to too many rain drops (high Nr)
 
-**After the fix**, gamma = round(p_crit) with the limiter ensures the correct number of collisions per pair.
+**After the fix**, p_crit = NINT(p_crit) with the limiter ensures the correct number of collisions per pair, consistent with SAM's implementation.
 
 ### 4.3 The Cascade Effect
 
@@ -272,7 +270,7 @@ Full enumeration allows a "collision cascade" within a single timestep: particle
 | Separation radius | 25 um (cloud/rain boundary) |
 | Random seed | 100 |
 
-### 5.2 Before Multi-Collision Fix (PyLCM, gamma=1 always)
+### 5.2 Before Multi-Collision Fix (PyLCM, p_crit=1 always)
 
 | Metric | PyLCM (old) | Fortran Box | Ratio |
 |--------|-------------|-------------|-------|
@@ -282,9 +280,9 @@ Full enumeration allows a "collision cascade" within a single timestep: particle
 | Peak qr | ~5.44 g/kg | ~5.53 g/kg | 0.98 |
 | Runtime | ~492 s | ~1500 s | 0.33 |
 
-The ~10x discrepancy in Nr was the primary issue: PyLCM produced far too many rain drops because each collision event only moved gamma=1 worth of mass, fragmenting the rain population.
+The ~10x discrepancy in Nr was the primary issue: PyLCM produced far too many rain drops because each collision event only moved p_crit=1 worth of mass, fragmenting the rain population.
 
-### 5.3 After Multi-Collision Fix (PyLCM, gamma=round(p_crit))
+### 5.3 After Multi-Collision Fix (PyLCM, p_crit=NINT(p_crit))
 
 | Metric | PyLCM (new) | Fortran Box | Ratio |
 |--------|-------------|-------------|-------|
@@ -365,7 +363,7 @@ Internal units: **/kg** for number, **kg/kg** for mixing ratios.
 
 1. **The multi-collision fix is critical for LSM accuracy**. Without it, the collision rate is severely underestimated when p_crit > 1 (which is common with LSM's upscaling).
 
-2. **PyLCM now agrees with SAM's implementation**. Both use identical LSM pairing, p_crit upscaling, multi-collision gamma with NINT rounding, and the gamma limiter.
+2. **PyLCM now agrees with SAM's implementation**. Both use identical LSM pairing, p_crit upscaling, multi-collision with NINT rounding, and the p_crit limiter.
 
 3. **The remaining ~3x Nr difference vs the Fortran box model** is an expected consequence of LSM vs full enumeration, not a bug. For bulk quantities (qc, qr, T), agreement is within 2-5%.
 
