@@ -31,7 +31,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         check_collection = False
         
         # Find out what kind of interaction (or none) takes place
-        check_final, check_collection, v_r1, v_r2, gamma = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple, switch_turb_kernel, epsilon_turb)
+        check_final, check_collection, v_r1, v_r2, p_crit = determine_collision(dt,particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant, switch_vt_simple, switch_turb_kernel, epsilon_turb)
 
         if check_final:
 
@@ -44,7 +44,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
             # Each droplet of the super-droplet with the smaller weighting factor collects
             # one droplet of the super-droplet with the larger weighting factor
             elif check_collection:
-                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2, acc_ts, aut_ts, gamma)
+                particle1, particle2, acc_ts, aut_ts = liquid_update_collection(particle1, particle2, acc_ts, aut_ts, p_crit)
         
         #Change droplet vertical location by subtracting their terminal velocity from the parcel velocity˛
         if sedi_removal:
@@ -75,7 +75,7 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
     
     return particles_list, acc_ts, aut_ts, precip_ts
 
-def liquid_update_collection(particle1, particle2, acc_ts, aut_ts, gamma=1):
+def liquid_update_collection(particle1, particle2, acc_ts, aut_ts, p_crit=1):
 
     # _int1: gains total individual mass (smaller A)
     # _int2: loses total mass, constant individual mass (larger A)
@@ -94,19 +94,19 @@ def liquid_update_collection(particle1, particle2, acc_ts, aut_ts, gamma=1):
     v_ptcl2 = ptcl_int2.M / ptcl_int2.A / rho_liq
 
     # Update of M, A (water mass and particle number)
-    # gamma: number of collisions (multi-collision, Shima et al. 2009)
+    # p_crit: number of collisions (multi-collision, Shima et al. 2009)
 
-    #Increase of water mass due to collision (gamma collisions)
-    ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int * gamma
+    #Increase of water mass due to collision (p_crit collisions)
+    ptcl_int1.M = ptcl_int1.M + ptcl_int1.A * x_int * p_crit
     #Increase of Aerosol mass due to collision
-    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int * gamma
+    ptcl_int1.Ns = ptcl_int1.Ns + ptcl_int1.A * xs_int * p_crit
     #Update volume-mean averaged kappa
     ptcl_int1.kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa )/ (v_ptcl1 + v_ptcl2)
 
     #Decrease of number, aerosol and water mass due to collision
-    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A * gamma
-    ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int * gamma
-    ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int * gamma
+    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A * p_crit
+    ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int * p_crit
+    ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int * p_crit
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
     
@@ -209,8 +209,6 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
     p_crit = max(particle1.A, particle2.A) * K / V_parcel * dt
     p_crit = p_crit*nptcl*(nptcl-1)/(half_length*2)
 
-    gamma = 0  # number of collisions
-
     x_rand = np.random.random()
 
     if p_crit > x_rand:
@@ -218,19 +216,20 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
         check_collection = True
 
         if p_crit <= 1.0:
-            gamma = 1
+            p_crit = 1
         else:
             # Multi-collision: following SAM Fortran (Shima et al. 2009)
-            gamma = round(p_crit)  # NINT equivalent
-            gamma = max(gamma, 1)
+            p_crit = max(round(p_crit), 1)  # NINT equivalent
             # Limiter: ensure we don't collect more particles than available
-            # max(A) - gamma * min(A) >= 1
+            # max(A) - p_crit * min(A) >= 1
             A_max = max(particle1.A, particle2.A)
             A_min = min(particle1.A, particle2.A)
-            gamma_lim = max(int((A_max - 1) / A_min), 1)
-            gamma = min(gamma, gamma_lim)
+            p_crit_lim = max(int((A_max - 1) / A_min), 1)
+            p_crit = min(p_crit, p_crit_lim)
+    else:
+        p_crit = 0
 
-    return check_final, check_collection, v_r1, v_r2, gamma
+    return check_final, check_collection, v_r1, v_r2, p_crit
 
 
 def E_H80(r1, r2):
