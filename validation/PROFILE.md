@@ -72,3 +72,28 @@ time-boxed pass. No physics was changed.
 N/A — no code change applied (no safe target). All 11 tests still pass
 (`python -m pytest tests/ -v`); baseline correctness is unaffected because
 the profiling driver is additive and does not modify any physics module.
+
+## Condensation SoA+numba
+
+Benchmark driver: `validation/bench_condensation.py` (condensation-only, n_ptcl=20000, nt=300, numba warmed up first).
+
+| path                              | wall time (s) |
+|-----------------------------------|---------------|
+| object `drop_condensation`        | 7.425 |
+| fast `drop_condensation_fast`     | 1.370 |
+| **speedup**                       | **5.42x** |
+
+Correctness: fast path reproduces the object path within max rel diff M = 0.000e+00; the golden regression (`tests/test_condensation_fast.py`) matches at **rtol=1e-9** (bit-for-bit, rel diff 0.0 at n_ptcl=200).
+
+Implementation: `PyLCM/condensation_fast.py` extracts particle state
+(M, A, Ns, kappa) into contiguous float64 arrays and runs the
+per-particle loop in an `@njit(cache=True)` kernel (`_cond_kernel`),
+which calls the already-jitted `radius_liquid_euler` directly. The
+object-based reference in `PyLCM/condensation.py` is unchanged and
+remains the regression anchor.
+
+Bit-exactness note: integer powers (`r_liq ** 3`) are written as
+`** 3.0` in the kernel so numba routes through libm `pow()` and
+matches CPython's `** 3` to the last ULP. With `** 3` numba emits
+`x*x*x`, a 1-ULP difference that amplifies chaotically over the
+300-step Newton-Raphson ascent and breaks the rtol=1e-9 gate.
