@@ -1,9 +1,11 @@
-numpy>=1.24
+# numba and numpy are version-coupled: numba 0.65+ supports numpy up to 2.4.
+# Keep this pairing consistent to avoid an ABI mismatch at import time.
+numpy>=1.24,<2.5
 scipy>=1.10
 pandas>=2.0
 matplotlib>=3.7
 plotly>=5.0
-numba>=0.58
+numba>=0.65
 ipywidgets>=8.0
 tqdm>=4.65
 joblib>=1.3
