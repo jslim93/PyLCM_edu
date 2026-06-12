@@ -68,11 +68,14 @@ for separating physical signal from Monte-Carlo noise. See its module docstring.
 
 ## Performance
 
-The single-run hot path uses numba JIT on the inner numeric kernels (`esatw`,
-`sigma_air_liq`, `radius_liquid_euler`). A baseline profile lives in
-`validation/PROFILE.md`; further single-run speedup requires a struct-of-arrays
-refactor of the per-particle loop, planned for a future release. For multi-run
-studies the parallel ensemble is the main lever today.
+The condensation hot loop runs on a struct-of-arrays numba kernel
+(`PyLCM/condensation_fast.py`), **5.4× faster than the object loop and
+bit-for-bit identical** to it (locked by a golden regression test). The collision
+helpers `E_H80` and `ws_drops_beard` are JIT-compiled, and the particle shuffle
+uses `np.random.permutation`. Together these give **~3× faster full runs**
+(condensation + collision). `ensemble.py` then runs members **in parallel across
+cores**, so a K-member ensemble is roughly 3K× faster than serial object-based
+runs. Profile and benchmarks: `validation/PROFILE.md`.
 
 ## Known limitations
 
