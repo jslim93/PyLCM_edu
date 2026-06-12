@@ -32,7 +32,7 @@ def spec_plot(ax, spectra_arr, nt,dt, rm_spec, rc_liq_avg_array, time_array):
     cbar.ax.set_title('dN/dlog(R) (mg$^{-1}$)', fontsize = 10, pad = 10)
     
     # Add cloud, rain mean droplet size above DSD
-    ax.plot(time_array, rc_liq_avg_array*1e6 , color='black', linewidth=2, label='Mean radius $\overline{r}$ (µm) \n (cloud & rain droplets)')
+    ax.plot(time_array, rc_liq_avg_array*1e6 , color='black', linewidth=2, label=r'Mean radius $\overline{r}$ (µm)' + '\n (cloud & rain droplets)')
 
     # Add labels and title
     ax.set_xlabel("Time (s)")
