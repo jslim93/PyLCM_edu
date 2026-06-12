@@ -11,7 +11,8 @@ import numpy as np
 from PyLCM.parameters import *
 from PyLCM.aero_init import aero_init
 from PyLCM.parcel import ascend_parcel, parcel_rho
-from PyLCM.condensation import esatw, drop_condensation
+from PyLCM.condensation import esatw
+from PyLCM.condensation_fast import drop_condensation_fast as drop_condensation
 from PyLCM.collision import collection
 from Post_process.analysis import ts_analysis
 
