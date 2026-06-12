@@ -77,11 +77,27 @@ uses `np.random.permutation`. Together these give **~3× faster full runs**
 cores**, so a K-member ensemble is roughly 3K× faster than serial object-based
 runs. Profile and benchmarks: `validation/PROFILE.md`.
 
+## Entrainment mixing (IHMD)
+
+Warm-cloud entrainment mixing is parameterized by two controls (`PyLCM/mixing.py`):
+an entrainment rate **λ** and the **Inhomogeneous Mixing Degree (IHMD)** of
+Lim & Hoffmann (2023). Mixing runs before condensation each step, diluting the
+parcel toward the environment and redistributing cloud liquid so that
+
+> **N_c / N_{c,0} = (q_c / q_{c,0})^IHMD**
+
+IHMD=0 is homogeneous (every droplet shrinks, number conserved); IHMD=1 is
+inhomogeneous (a subset evaporates entirely, survivors keep size). The notebook
+`validation/entrainment_mixing.ipynb` sweeps IHMD and renders the DSD contrast and
+the N–r_v mixing diagram. A `MixingModel` interface leaves a seam for a future
+**LEM** backend (`LEMMixing`, Phase 3b); ice/mixed-phase mixing is Phase 4.
+
 ## Known limitations
 
-- **Entrainment is EXPERIMENTAL and not physically validated.** It is hard-gated:
-  calling `PyLCM.entrainment.basic_entrainment(...)` raises unless you pass
-  `experimental=True`. A validated entrainment scheme is planned for **v1.1**.
+- The legacy `PyLCM.entrainment.basic_entrainment(...)` is superseded by
+  `ParameterizedMixing` (the homogeneous limit, IHMD=0) and remains hard-gated
+  behind `experimental=True`.
+- `LEMMixing` is an interface stub (raises `NotImplementedError`) pending Phase 3b.
 
 ## How to cite
 
