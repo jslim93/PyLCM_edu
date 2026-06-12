@@ -17,7 +17,7 @@ from PyLCM.collision import collection
 from Post_process.analysis import ts_analysis
 
 
-def run_single_series(n_ptcl=2000, nt=1000, collect_every=50, diagnostic="LWC"):
+def run_single_series(n_ptcl=2000, nt=1000, collect_every=50, diagnostic="LWC", mixing=None):
     """Run one full condensation+collision ascent; return a 1-D diagnostic series.
 
     The RNG is NOT seeded here on purpose: `ensemble.run_member` seeds globally
@@ -47,6 +47,11 @@ def run_single_series(n_ptcl=2000, nt=1000, collect_every=50, diagnostic="LWC"):
         z_parcel, T_parcel, P_parcel = ascend_parcel(
             z_parcel, T_parcel, P_parcel, w, dt, tt, zmax, theta_profiles, None, "linear")
         rho_p, _, air_mass = parcel_rho(P_parcel, T_parcel)
+        # Mixing runs BEFORE condensation (entrainment dilution + IHMD redistribution).
+        if mixing is not None:
+            particles_list, T_parcel, q_parcel = mixing.apply(
+                particles_list, T_parcel, q_parcel, P_parcel, z_parcel,
+                dt, w, air_mass)
         ct = at = et = da = 0.0
         particles_list, T_parcel, q_parcel, S_lst, ct, at, et, da = drop_condensation(
             particles_list, T_parcel, q_parcel, P_parcel, nt, dt, air_mass, S_lst,
