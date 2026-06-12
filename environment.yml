@@ -1,0 +1,17 @@
+name: PyLCM
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.11,<3.14
+  - numpy>=1.24
+  - scipy>=1.10
+  - pandas>=2.0
+  - matplotlib>=3.7
+  - numba>=0.58
+  - ipywidgets>=8.0
+  - tqdm>=4.65
+  - joblib>=1.3
+  - jupyter
+  - pip
+  - pip:
+    - plotly>=5.0
