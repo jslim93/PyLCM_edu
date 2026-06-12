@@ -193,6 +193,11 @@ def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_
     check_final = False
     check_collection = False
 
+    # A fully evaporated/degenerate super-droplet (M<=0 or A<=0) has zero radius and
+    # cannot collide; skip it to avoid division-by-zero in radius/E_H80 computation.
+    if particle1.M <= 0.0 or particle2.M <= 0.0 or particle1.A <= 0.0 or particle2.A <= 0.0:
+        return check_final, check_collection, 0.0, 0.0, 0
+
     R_n = (particle1.M / particle1.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
     R_m = (particle2.M / particle2.A / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
 
