@@ -13,11 +13,12 @@ from PyLCM.condensation import *
 from PyLCM.collision import *
 from PyLCM.animation import *
 from PyLCM.widget import *
+from PyLCM.mixing import ParameterizedMixing
 
 from Post_process.analysis import *
 from Post_process.print_plot import *
 
-def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, z_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget, kohler_activation_radius, switch_kappa_koehler, switch_sedi_removal,entrainment_rate,switch_entrainment,qv_profiles, theta_profiles, entrainment_start, entrainment_end, switch_kelvin=True, switch_solute=True, switch_E_constant=False, switch_vt_simple=False, switch_turb_kernel=False, epsilon_turb=0.0, switch_adaptive_dt=False):
+def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widget, nt_widget, dt_widget, rm_spec, ascending_mode_widget, mode_displaytype_widget, z_widget, max_z_widget, Condensation_widget, Collision_widget, mode_aero_init_widget, gridwidget, kohler_activation_radius, switch_kappa_koehler, switch_sedi_removal,entrainment_rate,switch_entrainment,qv_profiles, theta_profiles, entrainment_start, entrainment_end, switch_kelvin=True, switch_solute=True, switch_E_constant=False, switch_vt_simple=False, switch_turb_kernel=False, epsilon_turb=0.0, switch_adaptive_dt=False, ihmd=0.0):
 
     
     # Function call of the complete model initialization (model_init) (aerosol initialization included)
@@ -37,6 +38,11 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
 
     time_array = np.arange(nt+1)*dt
 
+    # Construct the parameterized entrainment-mixing model once before the loop.
+    # z_env (global from PyLCM.parameters) matches the profiles built by
+    # create_env_profiles (np.arange(z_init, 3001, 10)) for the default z_init=0.
+    mixing_model = ParameterizedMixing(entrainment_rate, ihmd, qv_profiles, theta_profiles, z_env)
+
     if display_mode == 'graphics':
         # Initialization of animation
         figure_item = animation_init(dt, nt,rm_spec, qa_ts, qc_ts, qr_ts, na_ts, nc_ts, nr_ts, T_parcel_array, RH_parcel_array, q_parcel_array, z_parcel_array)
@@ -46,12 +52,14 @@ def timesteps_function(n_particles_widget, P_widget, RH_widget, T_widget, w_widg
         # Parcel ascending
         z_parcel, T_parcel,P_parcel = ascend_parcel(z_parcel, T_parcel,P_parcel, w_parcel, dt, time,max_z,theta_profiles, time_half_wave_parcel, ascending_mode)
         
-        if switch_entrainment and (entrainment_start <= time) and  (time < entrainment_end) and (z_parcel < 3000.):
-            #Entrainment works only when z < 3000m
-            T_parcel, q_parcel = basic_entrainment(dt,z_parcel, T_parcel, q_parcel,P_parcel, entrainment_rate, qv_profiles, theta_profiles)
-    
         rho_parcel, V_parcel, air_mass_parcel =  parcel_rho(P_parcel, T_parcel)
-        
+
+        if switch_entrainment and (entrainment_start <= time) and  (time < entrainment_end) and (z_parcel < 3000.):
+            #Entrainment works only when z < 3000m. ParameterizedMixing dilutes
+            #T,q toward env then applies IHMD redistribution, BEFORE condensation.
+            particles_list, T_parcel, q_parcel = mixing_model.apply(
+                particles_list, T_parcel, q_parcel, P_parcel, z_parcel, dt, w_parcel, air_mass_parcel)
+
         # Condensational Growth
         dq_liq = 0.0
         if do_condensation:
