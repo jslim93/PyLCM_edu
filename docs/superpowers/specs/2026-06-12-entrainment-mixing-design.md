@@ -67,12 +67,12 @@ The existing `entrainment.py` `basic_entrainment` is superseded by `Parameterize
 
 ## 4. Integration & controls
 
-- **Per-timestep order:** ascent → mixing dilutes bulk `T`,`q` toward the environment (entrainment)
-  → existing condensation step realizes the *homogeneous* shrink in response to the lowered
-  saturation → the mixing module then applies the *inhomogeneous* whole-droplet removal to meet
-  the IHMD target `N_c/N_{c,0} = (q_c/q_{c,0})^IHMD` using the LWC change measured across the step.
-  (Concretely the mixing model exposes `dilute(...)` before condensation and `redistribute(...)`
-  after; `apply(...)` is the convenience wrapper. The plan finalizes the call wiring.)
+- **Per-timestep order: mixing first, then condensation.** ascent → `MixingModel.apply(...)` runs
+  as one self-contained step (dilute bulk `T`,`q` toward the environment; compute the ΔLWC that
+  must evaporate; distribute it as *homogeneous* shrink of all droplets and *inhomogeneous* whole-
+  droplet removal so that `N_c/N_{c,0} = (q_c/q_{c,0})^IHMD`; return evaporated water to vapor) →
+  the existing condensation step then performs normal diffusional growth/evaporation on the mixed
+  state → collision. Mixing owns the entrainment-evaporation; condensation is unchanged.
 - **Two widget sliders** (teaching UX): `entrainment_rate` (λ) and `mixing_degree` (**IHMD**,
   0=homogeneous → 1=inhomogeneous). χ is diagnosed from the dilution, not set directly.
 - Default `entrainment_enabled = False` so all existing runs/notebooks are byte-for-byte unchanged.
