@@ -1,52 +1,93 @@
-# PyLCM_parcel
-Lagrangian Cloud Model(LCM) parcel model for education purposes. 
+# PyLCM — Educational Lagrangian Cloud Model
 
-> **Note:** The entrainment module is still under development. I recommend not using it yet.
+![CI](https://github.com/jslim93/PyLCM_edu/actions/workflows/ci.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Installation
-1. Install anaconda3 for python / jupyter
-https://docs.anaconda.com/
+A teaching parcel-model simulator for warm-cloud microphysics using Lagrangian
+super-droplets. It integrates an ascending air parcel and resolves droplet
+**condensation/evaporation** (Köhler theory) and **collision–coalescence**
+(stochastic super-droplet method), so students can watch a cloud droplet
+spectrum form and rain develop from first principles.
 
-2. Create a conda environment for PyLCM (Mac/Linux)
-```
-conda create -n PyLCM
-```
-3. Activate conda env (Mac/Linux).
-```
-conda activate  PyLCM
-```
+## Install (one command)
 
-4. Install necessary packages (jupyter,numpy, scipy, pandas, matplotlib, plotly, ipywidgets)
+With conda (recommended):
 
-#For Mac/Linux users:
-```
-  conda install jupyter
-  conda install -c plotly plotly
-  conda install numpy
-  conda install scipy
-  conda install pandas
-  conda install matplotlib
-  conda install ipywidgets
+```bash
+conda env create -f environment.yml && conda activate PyLCM && pip install -e .
 ```
 
-#For Windows users:
-  Please install the packages listed above via Anaconda Navigator
+Or with pip into an existing Python ≥3.11 environment:
 
-## Model Run
-To run the PyLCM model, follow these steps:
-1. Activate conda env (Mac/Linux).
+```bash
+pip install -e . && pip install -r requirements.txt
 ```
-conda activate  PyLCM
-```
-2. run jupyter
-```
-   jupyter notebook
-```
-3. run `PyLCM_edu.ipynb' from your browser 
 
+> **Note on versions:** `numpy` and `numba` are version-coupled (numba 0.65+
+> supports numpy up to 2.4). The pins in `environment.yml` / `requirements.txt`
+> keep this pairing consistent — don't loosen them independently.
 
-## Usage
-- The Python files in the PyLCM module are core files for running the model. It is recommended only to modify them if you fully understand their functionality.
-- For post-processing, useful codes are included in the `Post_process` module, such as `analysis.py` and `print_plot.py.` Users can use or modify these codes to create the desired plots.
+## Quickstart
 
-* Contact: J.lim@physik.uni-muenchen.de
+```bash
+jupyter notebook PyLCM_edu.ipynb
+```
+
+Guided teaching notebooks:
+
+- `PyLCM_Part1_Foundations.ipynb` — the physics, module by module.
+- `PyLCM_Part2_Experiments.ipynb` — hands-on numerical experiments.
+
+## Scientific basis
+
+- **Köhler theory** for activation and condensational growth.
+- **Hall (1980)** gravitational collision-efficiency table.
+- **Straub et al. (2009)** coalescence efficiency `E_S09`.
+- **Beard (1976)** droplet terminal velocity.
+- **Shima et al. (2009)** Linear Sampling Method for stochastic collisions.
+- Optional **Ayala et al. (2008) / Wang & Grabowski (2009)** turbulent collision kernel.
+
+## Validation
+
+`validation/collision_validation.ipynb` answers the common question — *are the
+collision results correct versus the original Fortran / SAM6-LCM?* In short:
+**yes.** PyLCM shares its core collision algorithm (Linear Sampling, Hall 1980,
+Beard 1976, multi-collision limiter) with SAM6-LCM and the Fortran box model. The
+one substantive difference is that PyLCM applies the Straub (2009) coalescence
+efficiency `E_S09` in **both** the gravitational and turbulent kernels, whereas
+SAM6-LCM omits it. PyLCM therefore **agrees with the Fortran box-model reference**
+and is *more* physically complete than SAM6-LCM in the turbulent regime. Physics
+invariants (mass conservation, positivity, numerical stability) are checked in CI
+under `tests/`.
+
+## Ensemble runs
+
+`ensemble.py` runs `N` independent stochastic members **in parallel across CPU
+cores** (joblib) and returns the mean plus a 10–90 percentile envelope — useful
+for separating physical signal from Monte-Carlo noise. See its module docstring.
+
+## Performance
+
+The single-run hot path uses numba JIT on the inner numeric kernels (`esatw`,
+`sigma_air_liq`, `radius_liquid_euler`). A baseline profile lives in
+`validation/PROFILE.md`; further single-run speedup requires a struct-of-arrays
+refactor of the per-particle loop, planned for a future release. For multi-run
+studies the parallel ensemble is the main lever today.
+
+## Known limitations
+
+- **Entrainment is EXPERIMENTAL and not physically validated.** It is hard-gated:
+  calling `PyLCM.entrainment.basic_entrainment(...)` raises unless you pass
+  `experimental=True`. A validated entrainment scheme is planned for **v1.1**.
+
+## How to cite
+
+> J. Lim, *PyLCM v1.0* (2026). Educational Lagrangian Cloud Model.
+
+## Contact
+
+J.lim@physik.uni-muenchen.de
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

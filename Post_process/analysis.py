@@ -64,8 +64,15 @@ def ts_analysis(particles_list,air_mass_parcel,log_edges, nbins, n_particles):
         particles_a[particle.id] = particle.A
         
     # Weighted mean and standard deviation of radius for cloud droplets only
-    rc_liq_avg = np.nansum(np.array(particles_c) * np.array(particles_ac)) / np.sum(np.array(particles_ac))
-    rc_liq_std = np.sqrt( np.nansum(np.array(particles_ac) * (np.array(particles_c - rc_liq_avg))**2) / (np.sum(np.array(particles_ac))) )
+    particles_c_arr = np.array(particles_c)
+    particles_ac_arr = np.array(particles_ac)
+    total_weight = np.sum(particles_ac_arr)
+    if total_weight > 0:
+        rc_liq_avg = np.nansum(particles_c_arr * particles_ac_arr) / total_weight
+        rc_liq_std = np.sqrt(np.nansum(particles_ac_arr * (particles_c_arr - rc_liq_avg)**2) / total_weight)
+    else:
+        rc_liq_avg = 0.0
+        rc_liq_std = 0.0
 
     # Unit conversion of mixing ratios
     qc = qc_mass / air_mass_parcel *1e3

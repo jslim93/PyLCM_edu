@@ -13,7 +13,7 @@ def model_steering_input():
     
     # Create the widgets for the variables
     dt_widget      = widgets.BoundedFloatText(description='dt (s):', min = 0.0001, max = 5.0, value = 1.0, style=style)
-    nt_widget      = widgets.IntText(description='nt:', value = 3600, style=style)
+    nt_widget      = widgets.BoundedIntText(description='nt:', min=1, max=100000, value = 3600, style=style)
 
     Condensation_widget = widgets.Checkbox(description='Condensation', value=True, style=style)
     Collision_widget = widgets.Checkbox(description='Collision', value=False, style=style)
@@ -92,27 +92,28 @@ def grid_modes_input():
     # Column 0 for mode 1
     gridwidget[0, 0]= widgets.Button(description='Mode #1', disabled=False, button_style='info', tooltip='Heading', style=style)
     gridwidget[1, 0] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=118.0, style=style)
-    gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.019, style=style)
-    gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=3.3, style=style)
+    gridwidget[2, 0] = widgets.BoundedFloatText(description='mu (µm)', min = 0.001, max = 5.0, step = 0.001, value=0.019, style=style)
+    gridwidget[3, 0] = widgets.BoundedFloatText(description='sigma (-)', min = 0.01, max = 3.0, step = 0.1, value=3.3, style=style)
     gridwidget[4, 0] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     
     # Column 1 for mode 2
     gridwidget[0, 1]= widgets.Button(description='Mode #2', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 1] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=11.0, style=style)
-    gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.001, value=0.056, style=style)
-    gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=1.6, style=style)
+    gridwidget[2, 1] = widgets.BoundedFloatText(description='mu (µm)', min = 0.001, max = 5.0, step = 0.001, value=0.056, style=style)
+    gridwidget[3, 1] = widgets.BoundedFloatText(description='sigma (-)', min = 0.01, max = 3.0, step = 0.1, value=1.6, style=style)
     gridwidget[4, 1] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 2 for mode 3
     gridwidget[0, 2]= widgets.Button(description='Mode #3', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 2] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.01, value=0.72, style=style)
-    gridwidget[2, 2] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.1, value=0.46, style=style)
-    gridwidget[3, 2] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=2.2, style=style)
+    gridwidget[2, 2] = widgets.BoundedFloatText(description='mu (µm)', min = 0.001, max = 5.0, step = 0.1, value=0.46, style=style)
+    gridwidget[3, 2] = widgets.BoundedFloatText(description='sigma (-)', min = 0.01, max = 3.0, step = 0.1, value=2.2, style=style)
     gridwidget[4, 2] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # Column 3 for mode 4
     gridwidget[0, 3]= widgets.Button(description='Mode #4', disabled=False, button_style='info', tooltip='Heading')
     gridwidget[1, 3] = widgets.BoundedFloatText(description='N_aero (cm⁻3)', min = 0.0, max = 5000.0, step = 0.1, value=0, style=style)
     gridwidget[2, 3] = widgets.BoundedFloatText(description='mu (µm)', min = 0.0, max = 5.0, step = 0.1, value=0, style=style)
     gridwidget[3, 3] = widgets.BoundedFloatText(description='sigma (-)', min = 0.0, max = 3.0, step = 0.1, value=0, style=style)
+
     gridwidget[4, 3] = widgets.BoundedFloatText(description='Hygroscopicity parameter', min = 0.0, max = 100.0, step = 0.1, value=1.6, style=style)
     # An additional button will be added later below of these widgets for the plot of the cumulative distribution.
     # plotbutton_widget = widgets.Button(description='Plot cumulative distr.', disabled=False, button_style='info', tooltip='Plot cumulative distribution of all modes')
@@ -167,3 +168,65 @@ def plot_widgets_settings(nt):
     display(mode_plots_widget, 'For droplet spectra: set increment (e.g. 20: every 20th timestep a line is drawn): ', increment_widget,droplet_mode_widget)
     
     return mode_plots_widget, increment_widget,droplet_mode_widget
+
+# Aerosol preset configurations for quick setup
+# Maritime: few, large, hygroscopic CCN → large drops, fast rain
+# Continental: many, small, less hygroscopic → many small drops, suppressed rain
+# Arctic: ultra-clean → very few CCN, extreme drizzle behavior
+AEROSOL_PRESETS = {
+    'Maritime': {
+        'N':     [100.0,  20.0,   0.0,   0.0],
+        'mu':    [0.050,  0.250,  0.001, 0.0],
+        'sigma': [2.0,    1.8,    0.01,  0.0],
+        'kappa': [1.0,    1.2,    1.6,   1.6],
+    },
+    'Continental': {
+        'N':     [3200.0, 2900.0, 0.3,   0.0],
+        'mu':    [0.016,  0.068,  0.920, 0.0],
+        'sigma': [2.1,    2.0,    2.2,   0.0],
+        'kappa': [0.14,   0.3,    0.7,   1.6],
+    },
+    'Arctic': {
+        'N':     [15.0,   5.0,    0.0,   0.0],
+        'mu':    [0.030,  0.100,  0.001, 0.0],
+        'sigma': [1.8,    1.5,    0.01,  0.0],
+        'kappa': [0.4,    0.6,    1.6,   1.6],
+    },
+}
+
+def preset_input(gridwidget):
+    """Dropdown to load preset aerosol configurations into the grid widget."""
+    style = {'description_width': 'initial'}
+    preset_widget = widgets.Dropdown(
+        options=['Custom'] + list(AEROSOL_PRESETS.keys()),
+        value='Custom',
+        description='Aerosol preset:',
+        style=style
+    )
+
+    def on_preset_change(change):
+        if change['new'] in AEROSOL_PRESETS:
+            p = AEROSOL_PRESETS[change['new']]
+            for mode in range(4):
+                gridwidget[1, mode].value = p['N'][mode]
+                gridwidget[2, mode].value = p['mu'][mode]
+                gridwidget[3, mode].value = p['sigma'][mode]
+                gridwidget[4, mode].value = p['kappa'][mode]
+
+    preset_widget.observe(on_preset_change, names='value')
+    display(preset_widget)
+    return preset_widget
+
+def ablation_settings():
+    """Ablation Lab: toggle individual physics terms on/off to study their effect."""
+    style = {'description_width': 'initial'}
+    kelvin_widget = widgets.Checkbox(description='Curvature (Kelvin) effect', value=True, style=style)
+    solute_widget = widgets.Checkbox(description='Solute (Raoult) effect', value=True, style=style)
+    E_const_widget = widgets.Checkbox(description='Constant collision efficiency (E=1)', value=False, style=style)
+    vt_simple_widget = widgets.Checkbox(description='Simplified terminal velocity (Stokes)', value=False, style=style)
+    turb_kernel_widget = widgets.Checkbox(description='Turbulent collision kernel (Wang-Ayala)', value=False, style=style)
+    epsilon_widget = widgets.BoundedFloatText(description='TKE dissipation rate ε (m²/s³):', min=0.0, max=0.1, step=0.001, value=0.01, style=style)
+    adaptive_dt_widget = widgets.Checkbox(description='Adaptive condensation substep (Arnason & Brown 1971)', value=False, style=style)
+
+    display('Ablation Lab - Physics toggles:', kelvin_widget, solute_widget, E_const_widget, vt_simple_widget, turb_kernel_widget, epsilon_widget, adaptive_dt_widget)
+    return kelvin_widget, solute_widget, E_const_widget, vt_simple_widget, turb_kernel_widget, epsilon_widget, adaptive_dt_widget
