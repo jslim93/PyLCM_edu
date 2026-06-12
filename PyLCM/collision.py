@@ -17,7 +17,11 @@ _BEARD_C = np.array([-0.500015e1, 0.523778e1, -0.204914e1, 0.475294,
 def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts, aut_ts, precip_ts, sedi_removal, z_parcel, max_z, w_parcel, switch_E_constant=False, switch_vt_simple=False, switch_turb_kernel=False, epsilon_turb=0.0):
 
     #shuffle the particle list for LSM (linear sampling method)
-    particles.shuffle(particles_list)
+    # Use np.random.permutation so the shuffle is (a) faster than random.shuffle
+    # of a Python list and (b) controlled by np.random.seed (the ensemble seeds
+    # numpy's RNG, and determine_collision already draws from np.random).
+    perm = np.random.permutation(len(particles_list))
+    particles_list = [particles_list[i] for i in perm]
     nptcl = len(particles_list)
     half_length = len(particles_list) // 2
     

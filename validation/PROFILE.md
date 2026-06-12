@@ -97,3 +97,42 @@ Bit-exactness note: integer powers (`r_liq ** 3`) are written as
 matches CPython's `** 3` to the last ULP. With `** 3` numba emits
 `x*x*x`, a 1-ULP difference that amplifies chaotically over the
 300-step Newton-Raphson ascent and breaks the rtol=1e-9 gate.
+
+## Collision optimization
+
+Benchmark driver: `validation/bench_collision.py` (full condensation+collision ascent, n_ptcl=5000, nt=300, numba warmed up first).
+
+Two changes were made to the collision routine:
+
+**Tier 1 (deterministic):** `E_H80` (Hall 1980 collision-efficiency
+lookup + bilinear interpolation, ~8% baseline share) and
+`ws_drops_beard` (Beard 1976 terminal velocity, ~3% baseline share)
+are now `@jit(nopython=True, cache=True)`. Their lookup tables / poly
+coefficients were lifted to module-level float64 numpy arrays so numba
+closes over them as constants. Result is numerically identical
+(E_H80 bit-exact; ws_drops_beard max rel err 5.5e-15), guarded by
+`tests/test_collision_helpers_unchanged.py` at rtol=1e-10.
+
+**Tier 2 (stochastic):** the per-step list shuffle (`random.shuffle`,
+~13% baseline share) was replaced with `np.random.permutation`-based
+index reordering. This is faster and, crucially, is now controlled by
+`np.random.seed` (the ensemble seeds numpy's RNG). The exact LSM
+pairing semantics are preserved (element k of the first half pairs with
+element k of the second half, same half_length math). Because it
+changes the random sequence it is not bit-exact vs the old path;
+instead `tests/test_collision_conserves_in_full_run.py` proves the
+full run has no NaN, the collision step conserves total water mass
+(rel < 1e-10/step), and runs are reproducible under a fixed seed. The
+v1.0 conservation invariants (`tests/test_collision_invariants.py`)
+remain green.
+
+| metric                            | value |
+|-----------------------------------|-------|
+| full run wall time (s)            | 0.728 |
+| collection() total (s)           | 0.294 |
+| collection() share of full run    | 40.4% |
+
+The three optimized hotspots (shuffle ~13%, E_H80 ~8%,
+ws_drops_beard ~3%) together accounted for ~24% of the pre-change full
+run; after jitting the two helpers and vectorizing the shuffle the
+collection step now measures 40.4% of the full ascent.
