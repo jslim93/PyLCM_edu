@@ -55,7 +55,8 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             w=1.0, N_raw=(118., 11., .72), mu_um=(.019, .056, .46),
             sig=(3.3, 1.6, 2.2), kappa=1.6, ascending_mode="linear",
             collisions=True, switch_turb=False,
-            eps=0.0, lambda_ent=0.0, ihmd=0.0, collect=None):
+            eps=0.0, lambda_ent=0.0, ihmd=0.0, init_mode="Random",
+            collect=None):
     """One full ascent on persistent arrays. Returns (diagnostics_by_time, (M,A)).
 
     Entrainment mixing (warm-cloud, Lim & Hoffmann 2023): with lambda_ent>0 the
@@ -80,7 +81,7 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
 
     np.random.seed(seed)
     seed_numba_rng(seed)  # the @njit collision kernel uses Numba's separate RNG
-    T, q, pl = aero_init("Random", n_ptcl, P0, 0.0, T0, q0, np.array(N_raw) * 1e6,
+    T, q, pl = aero_init(init_mode, n_ptcl, P0, 0.0, T0, q0, np.array(N_raw) * 1e6,
                          mu, sg, rho_aero, k_aero, False)
     # extract persistent arrays ONCE
     M = np.array([p.M for p in pl], dtype=np.float64)
