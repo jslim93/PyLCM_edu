@@ -175,7 +175,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_ae
                         particle.kappa = k_aero[idx]
                         break
                         
-            particle.A = air_mass_parcel * np.sum(N_aero)/n_ptcl
+            particle.A = float(round(air_mass_parcel * np.sum(N_aero) / n_ptcl))
             particle.Ns = aero_r_seed[i]**3 * 4./3. * np.pi * rho_aero * particle.A
 
             if particle.Ns > min_mass_aero:
@@ -205,7 +205,7 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_ae
         for i in range(n_ptcl):
             particle = particles(i)
             # Define the range of values to evaluate the PDF
-            particle.A = air_mass_parcel * pdf_sum[i] * dlogr * radius[i]
+            particle.A = float(round(air_mass_parcel * pdf_sum[i] * dlogr * radius[i]))
             particle.Ns = radius[i]**3 * 4./3. * np.pi * rho_aero * particle.A
             particle.kappa = 0.5
 
@@ -220,6 +220,9 @@ def aero_init(mode_aero_init, n_ptcl, P_parcel, z_parcel,T_parcel,q_parcel, N_ae
             particle.id = i
             #Put initialized particle in a particles_list 
             particles_list.append(particle)
+
+    # Remove super-droplets whose rounded multiplicity is below one real droplet.
+    particles_list = [p for p in particles_list if p.A >= 1]
 
     dql_liq = (np.sum([p.M for p in particles_list]) - dql_liq)/air_mass_parcel
     T_parcel = T_parcel + dql_liq * l_v / cp
