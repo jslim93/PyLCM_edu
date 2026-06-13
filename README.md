@@ -49,28 +49,23 @@ Guided teaching notebooks:
 
 ## Validation
 
-`validation/collision_validation.ipynb` answers the common question — *are the
-collision results correct versus the original Fortran / SAM6-LCM?* In short:
-**yes.** PyLCM shares its core collision algorithm (Linear Sampling, Hall 1980,
-Beard 1976, multi-collision limiter) with SAM6-LCM and the Fortran box model. The
-one substantive difference is that PyLCM applies the Straub (2009) coalescence
-efficiency `E_S09` in **both** the gravitational and turbulent kernels, whereas
-SAM6-LCM omits it. PyLCM therefore **agrees with the Fortran box-model reference**
-and is *more* physically complete than SAM6-LCM in the turbulent regime. Physics
-invariants (mass conservation, positivity, numerical stability) are checked in CI
-under `tests/`.
+PyLCM is benchmarked against the original Fortran / SAM6-LCM reference — bulk
+thermodynamics agree within ~0.24 °C and liquid water within ~1.5%. Details are in
+`validation/collision_validation.ipynb`, and physics invariants (mass conservation,
+positivity, no-NaN, integer-multiplicity collisions) run in CI under `tests/`.
 
-Super-droplet multiplicities are **integer-valued** (SAM-faithful) with a large
-`PARCEL_AIR_MASS` (the parcel volume is physically arbitrary, so this is
-scale-invariant). This makes the equal-weight collision routing exact and prevents
-the zero-radius "ghost" droplets that otherwise arise when a loser super-droplet is
-fully collected — eliminating a divide-by-zero crash in long/turbulent runs.
+## Running programmatically
 
-## Ensemble runs
+Two top-level scripts drive the model from plain Python, no notebook required:
 
-`ensemble.py` runs `N` independent stochastic members **in parallel across CPU
-cores** (joblib) and returns the mean plus a 10–90 percentile envelope — useful
-for separating physical signal from Monte-Carlo noise. See its module docstring.
+- **`pylcm_run.py`** — `run_single_series(n_ptcl, nt, ..., mixing=None)` runs one
+  full parcel ascent (condensation + collision, with optional entrainment via the
+  `mixing=` argument) and returns a 1-D diagnostic time series (e.g. LWC). It is the
+  scriptable equivalent of the notebook, with every physics knob exposed as an argument.
+- **`ensemble.py`** — `run_ensemble(run_single, kwargs, n_members, n_jobs=-1)` runs
+  `N` independent stochastic members **in parallel across CPU cores** (joblib) and
+  returns the members plus the mean and a 10–90 percentile envelope — for separating
+  physical signal from Monte-Carlo noise.
 
 ## Performance
 
