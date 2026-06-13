@@ -41,10 +41,25 @@ giving SAM's exact-integer behavior. (A later cleanup may switch the field to in
 
 ## 3. Changes
 
+### 3.0 Parcel-volume scaling (makes the integer conversion lossless)
+The parcel volume is physically arbitrary (only concentrations matter), and `A ∝ air_mass`, so
+scaling the parcel up lifts every multiplicity — including the rare large-aerosol tail bins —
+above 1 without dropping anything. The model is **scale-invariant**: `p_crit = max(A)·K/V·dt`
+(both `A` and `V ∝ air_mass`) and the thermodynamics (`ΔM/air_mass`, `ΔM ∝ A ∝ air_mass`) are
+unchanged by the scale.
+- Replace the two hardcoded `100.0` parcel-air-mass values (`parcel.py parcel_rho`,
+  `collision.py determine_collision:191`) with **one shared constant `PARCEL_AIR_MASS`** in
+  `parameters.py`, used by both, so `A`'s normalization and collision's `V_parcel` can never drift.
+- Set `PARCEL_AIR_MASS` large enough that the smallest kept multiplicity is a comfortable integer
+  (target `min A ≳ 100`). A fixed large default (e.g. `1e6` kg) is safe — `A` stays far below the
+  `2^53 ≈ 9e15` exact-integer ceiling. (Adaptive sizing in `aero_init` is an alternative if a
+  fixed value proves too small/large for extreme aerosol; default to the fixed value.)
+
 ### 3.1 Initialization (`aero_init.py`, both modes)
-- Round each `particle.A` to the nearest integer value at creation (`A = float(round(A_raw))`).
-- Drop super-droplets whose rounded `A < 1` (no real droplets) — they carry no number and only
-  cause degenerate states. Re-normalize is not required (a dropped sub-1 bin is negligible).
+- With the larger `PARCEL_AIR_MASS`, round each `particle.A` to the nearest integer value at
+  creation (`A = float(round(A_raw))`) — now **lossless** (all `A` are large integers ≳ 100).
+- Drop only super-droplets that still round to `A < 1` (genuinely negligible); with the scaled
+  volume this should be empty in normal cases.
 
 ### 3.2 Collision (`collision.py`)
 - With integer-valued `A`, the existing exact `particle1.A == particle2.A` routing now correctly
@@ -61,12 +76,12 @@ giving SAM's exact-integer behavior. (A later cleanup may switch the field to in
 
 ### 3.3 IHMD entrainment reconciliation (`mixing.py`)
 - `redistribute_droplets` currently does `A *= (1−frac)^IHMD` (fractional). Change to **integer
-  droplet removal**: `A_new = round(A · (1−frac)^IHMD)` (and `M *= (1−frac)` unchanged). With the
-  large `A` values in real runs the discretization error in `N_c/N_{c,0} = (q_c/q_{c,0})^IHMD` is
-  negligible; the law holds in the large-`A` limit.
-- Update the redistribution unit tests: assert the IHMD law to a tolerance consistent with integer
-  rounding at the tested `A` (use large `A`, e.g. `A=1e8`, so `rtol≈1e-6` still holds), rather than
-  exact `rtol=1e-9`. Endpoints stay exact (IHMD=0 leaves `A` unchanged; IHMD=1 gives `round(A·(1−frac))`).
+  droplet removal**: `A_new = round(A · (1−frac)^IHMD)` (and `M *= (1−frac)` unchanged). Because
+  `PARCEL_AIR_MASS` is now large, every `A` is large, so the discretization error in
+  `N_c/N_{c,0} = (q_c/q_{c,0})^IHMD` is negligible.
+- Update the redistribution unit tests to use large `A` (e.g. `A=1e8`) so the IHMD law still holds
+  to tight tolerance (`rtol≈1e-7`) under integer rounding. Endpoints stay exact (IHMD=0 leaves `A`
+  unchanged; IHMD=1 gives `round(A·(1−frac))`).
 
 ### 3.4 Defense in depth
 Keep the `determine_collision` guard (`M≤0 or A≤0 → skip`) as a backstop; with integer `A` it
