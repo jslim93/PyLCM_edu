@@ -60,6 +60,12 @@ and is *more* physically complete than SAM6-LCM in the turbulent regime. Physics
 invariants (mass conservation, positivity, numerical stability) are checked in CI
 under `tests/`.
 
+Super-droplet multiplicities are **integer-valued** (SAM-faithful) with a large
+`PARCEL_AIR_MASS` (the parcel volume is physically arbitrary, so this is
+scale-invariant). This makes the equal-weight collision routing exact and prevents
+the zero-radius "ghost" droplets that otherwise arise when a loser super-droplet is
+fully collected — eliminating a divide-by-zero crash in long/turbulent runs.
+
 ## Ensemble runs
 
 `ensemble.py` runs `N` independent stochastic members **in parallel across CPU
