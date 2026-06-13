@@ -13,7 +13,7 @@ def parcel_rho(P_parcel, T_parcel):
     e_s = esatw(T_parcel)
     
     rho_parcel = p_env / ( r_a * T_parcel ) #  Air density
-    V_parcel   = 100.0 / rho_parcel # (Assumed) volume of parcel for a 100 kg air parcel
+    V_parcel   = PARCEL_AIR_MASS / rho_parcel # volume of the parcel for PARCEL_AIR_MASS of air
     air_mass_parcel = V_parcel * rho_parcel
     
     return(rho_parcel, V_parcel, air_mass_parcel) # (Assumed) air mass of parcel

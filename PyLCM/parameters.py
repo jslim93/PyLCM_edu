@@ -8,6 +8,11 @@ cp = 1005.0 # specific heat of air at constant pressure (J/kg/K)
 g = 9.81 # acceleration by gravity (m/s2)
 r_a = 287.0 # specific gas constant air (J/kg/K)
 pi = 3.141592653589 # Pi
+# Parcel air mass (kg). Physically arbitrary in a parcel model (only concentrations
+# matter); chosen large so super-droplet multiplicities A = air_mass*concentration are
+# large integers (lossless integer rounding, no dropped bins). Used by parcel_rho and
+# the collision volume so the two can never drift.
+PARCEL_AIR_MASS = 1.0e6
 molecularviscosity = 1.461E-5 # (dynamic) viscosity of air (kg/m/s)
 l_s = 2.834E6 # latent heat of sublimation (J/kg)
 muelq = 1.717e-05 # (dynamic) viscosity of air (kg/m/s)

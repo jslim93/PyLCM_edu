@@ -186,9 +186,8 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
 import math
 import numpy as np
 def determine_collision(dt, particle1, particle2, rho_parcel, rho_liq, p_env, T_parcel, half_length,nptcl, switch_E_constant=False, switch_vt_simple=False, switch_turb_kernel=False, epsilon_turb=0.0):
-    # Use actual parcel density and volume (not hardcoded values)
-    # V_parcel = air_mass / rho_parcel, where air_mass = 100 kg by convention
-    V_parcel = 100.0 / rho_parcel
+    # V_parcel = air_mass / rho_parcel, consistent with parcel_rho (PARCEL_AIR_MASS)
+    V_parcel = PARCEL_AIR_MASS / rho_parcel
 
     check_final = False
     check_collection = False
