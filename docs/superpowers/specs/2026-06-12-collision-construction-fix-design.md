@@ -1,100 +1,99 @@
-# Collision Construction Fix — Eliminate Zero-Radius Ghost Droplets
+# Integer Multiplicities — Eliminate Zero-Radius Ghost Droplets (SAM-faithful)
 
 **Date:** 2026-06-12
 **Author:** J. Lim (jslim93) with agent assistance
-**Base:** `feature/entrainment-mixing` (continues the zero-radius work already there)
-**Status:** Approved approach (Path A) — pending spec review → implementation plan
+**Base:** `feature/entrainment-mixing`
+**Status:** Approved approach (Option A — integer multiplicities) — pending spec review → plan
 
 ---
 
 ## 1. Problem (root-caused empirically)
 
-Collisions can leave a "ghost" super-droplet with **liquid mass `M=0` but multiplicity `A>0`
-and aerosol `Ns>0`** — physically a bare aerosol with a real haze radius (~0.29 µm), but the
-code computes its radius from liquid mass only → `r=0`, which crashes `E_H80`
-(`min(r1/r2, r2/r1)` divides by zero) and is unphysical.
+Collisions can leave a "ghost" super-droplet with **liquid mass `M=0` but multiplicity `A>0`**
+(a bare aerosol whose radius the code computes as 0, crashing `E_H80`). Instrumented mechanism
+(turbulent maritime, t=971):
 
-**Exact mechanism (instrumented, turbulent maritime case, t=971):**
-1. `Random` init gives every super-droplet identical `A` (Shima 2009 equal-multiplicity, the
-   SAM/Fortran-reference setup), so equal-weight collisions are common.
-2. `collection()` routes equal weights to `same_weights_update` via **exact** `particle1.A == particle2.A`.
-3. After a prior collision, two droplets become **near- but not exactly-equal** in `A`; the `==`
-   check fails → they fall to the asymmetric `liquid_update_collection`.
-4. With `A1 ≈ A2`, the loser transfers essentially all water: computed
-   `M2_new = M2 − A1·x_int·p_crit = M2 − M2 = 0.0` (catastrophic cancellation), while
-   `A2_new = A2 − A1` rounds to a tiny positive (`5.8e-11`) instead of 0.
-5. End-of-loop cleanup removes only `A ≤ 0`, so the `M=0, A=5.8e-11` ghost **survives** and
-   crashes the next collision it enters.
+1. `Random` init gives every super-droplet an *identical* multiplicity `A`, stored as a **float**.
+2. The equal-weight special case routes via **exact** `particle1.A == particle2.A`.
+3. After a prior collision two droplets become **near- but not exactly-equal** floats; the `==`
+   fails → they fall to the asymmetric `liquid_update_collection`.
+4. With `A1 ≈ A2` the loser is collected to `M = M2 − A1·x_int·p_crit = 0.0` (cancellation),
+   while `A2 − A1` rounds to `5.8e-11` instead of 0 → a ghost that survives the `A>0` cleanup.
 
-Note: although `Random` triggers it most, near-equal weights can also arise mid-run in
-`Weighting_factor` mode, so the fix is in the **shared construction**, not in one init mode.
+## 2. Why SAM is immune — and the decision
 
-## 2. Decision
+SAM (`micro_coll.f90`) stores the weighting factor `A` as a **`KIND=8` integer**. As a result:
+- `A_n .EQ. A_m` is an *exact integer* comparison → **every** equal-weight pair routes to the
+  same-weight split (`FLOOR(A/2)`); none ever "almost" matches.
+- The asymmetric branches are strict (`A_n .LT. A_m`) and the limiter keeps the loser `A ≥ 1`,
+  so the loser is **never fully emptied** → `M = x·A_new > 0` always.
+- A `.GT. 1` guard handles the minimum-multiplicity case.
 
-**Path A: keep both init modes; fix the shared `collection` construction.** Do not deprecate
-`Random` (it is the equal-multiplicity SDM standard and matches the Fortran reference). The
-default init mode is unchanged this cycle (everything downstream uses `Random`); switching the
-educational default to `Weighting_factor` for determinism is a separate, later choice.
+**Decision — Option A: make PyLCM multiplicities integer-valued, matching SAM.** This removes
+the entire bug *class* (equality routing, the limiter, and the A≥1 floor all become exact)
+rather than mimicking the outcome in float arithmetic.
 
-## 3. The fix (three linked parts, all in `PyLCM/collision.py`)
+**Storage choice:** keep `A` in the existing `float64` field but maintain the **invariant that `A`
+is always a non-negative integer value**. float64 represents integers exactly up to 2⁵³ ≈ 9e15,
+far above the `A ~ 1e10` values here, so integer-valued floats compare and subtract exactly
+(`A1 == A2` and `A2 − A1` are exact). This avoids a dtype migration through numba kernels while
+giving SAM's exact-integer behavior. (A later cleanup may switch the field to int64.)
 
-1. **Tolerant equal-weight routing.** In `collection()`, replace the exact
-   `particle1.A == particle2.A` with a relative-tolerance check (e.g. `np.isclose(A1, A2,
-   rtol=1e-9)`), so near-equal pairs use `same_weights_update` (the proper equal-weight split)
-   instead of the asymmetric path that fully collects the loser.
+## 3. Changes
 
-2. **Reconstruct, don't subtract; snap a fully-collected droplet to zero.** In
-   `liquid_update_collection`, compute the loser's new mass as `M2_new = x_int · A2_new`
-   (algebraically identical, no catastrophic cancellation), and when `A2_new` is essentially
-   fully collected (within a small relative epsilon of 0), set `A2 = 0` so the existing
-   end-of-loop cleanup removes it cleanly. No `M=0, A>0` ghost can persist.
+### 3.1 Initialization (`aero_init.py`, both modes)
+- Round each `particle.A` to the nearest integer value at creation (`A = float(round(A_raw))`).
+- Drop super-droplets whose rounded `A < 1` (no real droplets) — they carry no number and only
+  cause degenerate states. Re-normalize is not required (a dropped sub-1 bin is negligible).
 
-3. **Wet-aerosol floor on `M`.** In `liquid_update_collection` and `same_weights_update`, floor
-   every surviving droplet's `M` at its wet-aerosol-equilibrium mass — the same floor
-   `aero_init` uses:
-   `M_floor = max(r_aero, r_equi(S, T, r_aero, κ))**3 · A · 4/3·π·ρ_liq`,
-   with `r_aero = (Ns/(A·4/3·π·ρ_aero))**(1/3)`. This guarantees `r ≥ r_equi > 0` by
-   construction. Requires threading the parcel supersaturation `S` (or `q`,`T`,`P` to compute
-   it) and `T` into `collection()` → the update functions; import `r_equi` locally to avoid a
-   circular import.
+### 3.2 Collision (`collision.py`)
+- With integer-valued `A`, the existing exact `particle1.A == particle2.A` routing now correctly
+  catches all equal-weight pairs → `same_weights_update`.
+- `same_weights_update`: split with **floor**, SAM-style: `A_n_new = floor(A/2)`,
+  `A_m_new = A − A_n_new`; if either side would be `< 1`, fully merge into one super-droplet
+  (the other side's `A → 0`, removed by the end-of-loop `A>0` cleanup) instead of a fractional ghost.
+- `liquid_update_collection` (asymmetric): all `A` arithmetic is integer-valued; the existing
+  `p_crit` limiter (`A_max − p_crit·A_min ≥ 1`) keeps the loser `A ≥ 1`, so it is never emptied
+  and `M2_new = x_int·A2_new > 0`. Compute `M2_new = x_int·A2_new` (reconstruct, not subtract) so
+  it is exact. Keep `Ns` consistent the same way.
+- Add the SAM `max(A_n, A_m) > 1` guard before coalescence (a single-droplet super-droplet has no
+  one to give to).
 
-## 4. `same_weights_update` hardening
+### 3.3 IHMD entrainment reconciliation (`mixing.py`)
+- `redistribute_droplets` currently does `A *= (1−frac)^IHMD` (fractional). Change to **integer
+  droplet removal**: `A_new = round(A · (1−frac)^IHMD)` (and `M *= (1−frac)` unchanged). With the
+  large `A` values in real runs the discretization error in `N_c/N_{c,0} = (q_c/q_{c,0})^IHMD` is
+  negligible; the law holds in the large-`A` limit.
+- Update the redistribution unit tests: assert the IHMD law to a tolerance consistent with integer
+  rounding at the tested `A` (use large `A`, e.g. `A=1e8`, so `rtol≈1e-6` still holds), rather than
+  exact `rtol=1e-9`. Endpoints stay exact (IHMD=0 leaves `A` unchanged; IHMD=1 gives `round(A·(1−frac))`).
 
-- Apply the same **wet-aerosol floor** (§3.3) to both outputs.
-- Guard the **small/odd-multiplicity** special case: the current `A*0.5` split can produce a
-  sub-1 (fractional) multiplicity. Keep the split's total `A` and `M` conserved, but ensure no
-  output has `0 < A < ` a physical minimum that would later misbehave; for `A` below the
-  minimum, fully merge into one super-droplet (the other branch's `A → 0`, removed by cleanup)
-  rather than emitting a fractional ghost. (Exact threshold finalized in the plan.)
+### 3.4 Defense in depth
+Keep the `determine_collision` guard (`M≤0 or A≤0 → skip`) as a backstop; with integer `A` it
+should be unreachable for `M=0`.
 
-## 5. Defense in depth
+## 4. Testing
 
-Keep the existing `determine_collision` guard (`M≤0 or A≤0 → no collision`) as a cheap backstop,
-but it should now be effectively unreachable for `M=0` because the construction no longer
-produces such states.
-
-## 6. Testing
-
-- **No ghosts:** over a long turbulent maritime run (the case that failed at t=971) and a
-  10k-particle / 3600-step run, assert that **no super-droplet ever has `M≤0` while `A>0`**, and
-  no `ZeroDivisionError`.
-- **Radius positivity:** every super-droplet with `A>0` has `r ≥ r_equi > 0` at all times.
-- **Conservation preserved:** the existing collision invariants (`tests/test_collision_invariants.py`),
-  the condensation golden test, and the full suite still pass — the construction change must not
-  alter total water conservation.
-- **Routing:** two near-equal-`A` droplets route to `same_weights_update`, not the asymmetric path.
-- **Both modes:** ghost-freedom holds for `Random` and `Weighting_factor` init.
+- **No ghosts:** over the turbulent maritime run that failed at t=971, and a 10k-particle ×
+  3600-step run, assert **no super-droplet ever has `M≤0` while `A>0`**, no `ZeroDivisionError`,
+  and every `A` is integer-valued (`A == round(A)`).
+- **Radius positivity:** every `A>0` droplet has `r > 0`.
+- **Conservation preserved:** `tests/test_collision_invariants.py`, the condensation golden test,
+  and the full suite still pass — total water conservation unchanged.
+- **Routing:** exactly-equal integer `A` pairs route to `same_weights_update`; the floor-split
+  conserves total `A` and `M`.
+- **Both init modes:** ghost-freedom and integer-`A` invariant hold for `Random` and `Weighting_factor`.
+- **IHMD law (integer):** `N_c/N_{c,0} ≈ (q_c/q_{c,0})^IHMD` within integer-rounding tolerance.
 - **Regression:** re-run `validation/run_physics_checks.py` → still 22/22.
 
-## 7. Acceptance criteria
+## 5. Acceptance criteria
 
-- Long turbulent + 10k×3600 runs complete with zero `M=0,A>0` droplets and no crash.
-- All existing tests + the golden condensation test pass; 22/22 physics checks pass.
-- `Random` and `Weighting_factor` both produce only physical (r>0) droplets.
+- Long turbulent + 10k×3600 runs complete with zero `M=0,A>0` droplets, no crash, all `A` integer.
+- All existing tests + golden + 22/22 physics checks pass (IHMD law tests adjusted for integer rounding).
+- Both init modes produce only physical (r>0), integer-multiplicity droplets.
 - No init mode deprecated; default unchanged.
 
-## 8. Branch / workspace
+## 6. Branch / workspace
 
-Continue on `feature/entrainment-mixing` (this directly extends the zero-radius collision work
-already committed there), or a child branch off it. Never touch the live `PyLCM_edu` session.
-No "Claude"/Co-Authored-By commit lines.
+Continue on `feature/entrainment-mixing`. Never touch the live `PyLCM_edu` session. No
+"Claude"/Co-Authored-By commit lines.
