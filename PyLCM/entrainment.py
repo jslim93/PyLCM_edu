@@ -26,8 +26,10 @@ def _require_experimental(experimental):
 #Get Temperature and vapor mixing ratio for a given altitude by interpolation.
 def get_interp1d_var(z_val,z_env, profiles):
     from scipy.interpolate import interp1d
-    prof_interp = interp1d(z_env, profiles)
-    
+    # Clamp to the edge values outside the profile range, so a parcel that
+    # overshoots max_z by one step does not raise a bounds error.
+    prof_interp = interp1d(z_env, profiles, bounds_error=False,
+                           fill_value=(profiles[0], profiles[-1]))
     return float(prof_interp(z_val))
 
 #qv_profiles, theta_profiles, z_env = create_env_profiles(initial_theta, initial_qv, z_init, stability_condition)
