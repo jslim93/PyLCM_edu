@@ -150,3 +150,39 @@ def drop_condensation_fast(particles_list, T_parcel, q_parcel, P_parcel, nt, dt,
     S_lst = e_a - e_s
 
     return particles_list, T_parcel, q_parcel, S_lst, con_ts, act_ts, evp_ts, dea_ts
+
+
+def condense_soa(M, A, Ns, kappa, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel,
+                 rho_aero, kohler_activation_radius=False, switch_kappa_koehler=False,
+                 switch_kelvin=True, switch_solute=True):
+    """Persistent struct-of-arrays condensation step.
+
+    Operates IN-PLACE on the persistent `M` array (no per-step object<->array
+    conversion) and reuses the SAME validated `_cond_kernel` as
+    `drop_condensation_fast`, so results are bit-identical to the object path —
+    this is purely the data-layout optimization, not a physics change.
+
+    Returns updated (T_parcel, q_parcel); `M` is mutated in place.
+    """
+    e_s = esatw(T_parcel)
+    e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
+    supersat = e_a / e_s - 1.0
+
+    thermal_conductivity = 7.94048E-05 * T_parcel + 0.00227011
+    diff_coeff = 0.211E-4 * (T_parcel / 273.15) ** 1.94 * (101325.0 / P_parcel)
+    G_pre = 1.0 / (rho_liq * rv * T_parcel / (e_s * diff_coeff) + (l_v / (rv * T_parcel) - 1.0) *
+                   rho_liq * l_v / (thermal_conductivity * T_parcel))
+    alpha = 0.036
+    r0 = diff_coeff / alpha * np.sqrt(2.0 * np.pi / (rv * T_parcel)) / (1.0 + diff_coeff * l_v ** 2 *
+                                                                        e_s / (thermal_conductivity * rv ** 2 *
+                                                                               T_parcel ** 3))
+    afactor0 = 2.0 * sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel)
+
+    dq_liq, _, _, _, _ = _cond_kernel(
+        M, A, Ns, kappa, dt, supersat, G_pre, r0, afactor0,
+        switch_kappa_koehler, switch_kelvin, switch_solute,
+        kohler_activation_radius, rho_aero)
+
+    T_parcel = T_parcel + dq_liq * l_v / cp / air_mass_parcel
+    q_parcel = q_parcel - dq_liq / air_mass_parcel
+    return T_parcel, q_parcel
