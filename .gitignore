@@ -14,9 +14,14 @@ dist/
 .DS_Store
 # Project output
 Output/
+output.csv
+ensemble.csv
+*_out.csv
 # Envs
 .venv/
 env/
 venv/
 # Internal planning/spec artifacts (not for distribution)
 docs/superpowers/
+# Local project instructions (not for distribution)
+CLAUDE.md

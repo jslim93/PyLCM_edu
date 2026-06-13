@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
-from pylcm_run import run_single_series
+from PyLCM.pylcm_run import run_single_series
 
 
 def test_mixing_off_matches_baseline():

@@ -1,6 +1,6 @@
 import numpy as np
-from ensemble import run_ensemble
-from pylcm_run import run_single_series
+from PyLCM.ensemble import run_ensemble
+from PyLCM.pylcm_run import run_single_series
 
 
 def test_real_ensemble_runs_and_is_seed_deterministic():

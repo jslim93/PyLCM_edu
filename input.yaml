@@ -1,0 +1,29 @@
+# PyLCM run configuration (used by:  python run_pylcm.py input.yaml)
+# The Jupyter notebooks remain the primary interface; this drives scripted/batch runs.
+
+parcel:
+  T0:  293.2        # initial temperature (K)
+  P0:  101300.0     # initial pressure (Pa)
+  RH:  0.92         # initial relative humidity (0-1)
+  w:   1.0          # updraft velocity (m/s)
+  nt:  3000         # number of timesteps
+  dt:  1.0          # timestep length (s)
+
+aerosol:
+  n_ptcl: 2000      # number of super-droplets
+  preset: default   # default | maritime | continental | arctic
+
+physics:
+  collisions: true  # collision-coalescence on/off
+  turbulent:  false # turbulent (Ayala/Wang) collision kernel
+  epsilon:    0.0   # turbulent dissipation rate (m^2/s^3), used if turbulent: true
+
+entrainment:
+  enabled: false    # warm-cloud entrainment mixing on/off
+  lambda:  0.0      # fractional entrainment rate (1/m)
+  ihmd:    0.0      # Inhomogeneous Mixing Degree (0 homogeneous .. 1 inhomogeneous)
+
+output:
+  collect_every: 100      # save diagnostics every N steps
+  diagnostic:    LWC      # for --ensemble: LWC | qc | qr | Nc | Nr | Na
+  file:          output.csv

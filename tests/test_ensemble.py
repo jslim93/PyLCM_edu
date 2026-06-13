@@ -1,5 +1,5 @@
 import numpy as np
-from ensemble import run_ensemble
+from PyLCM.ensemble import run_ensemble
 
 
 def _toy_run(scale=1.0):

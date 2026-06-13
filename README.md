@@ -54,18 +54,29 @@ thermodynamics agree within ~0.24 °C and liquid water within ~1.5%. Details are
 `validation/collision_validation.ipynb`, and physics invariants (mass conservation,
 positivity, no-NaN, integer-multiplicity collisions) run in CI under `tests/`.
 
-## Running programmatically
+## Command-line runs (no notebook)
 
-Two top-level scripts drive the model from plain Python, no notebook required:
+Edit the parameters in **`input.yaml`** and run the model from the terminal — the
+same idea as the Fortran model's `input.nml`:
 
-- **`pylcm_run.py`** — `run_single_series(n_ptcl, nt, ..., mixing=None)` runs one
-  full parcel ascent (condensation + collision, with optional entrainment via the
-  `mixing=` argument) and returns a 1-D diagnostic time series (e.g. LWC). It is the
-  scriptable equivalent of the notebook, with every physics knob exposed as an argument.
-- **`ensemble.py`** — `run_ensemble(run_single, kwargs, n_members, n_jobs=-1)` runs
-  `N` independent stochastic members **in parallel across CPU cores** (joblib) and
-  returns the members plus the mean and a 10–90 percentile envelope — for separating
-  physical signal from Monte-Carlo noise.
+```bash
+python run.py                      # single run, reads input.yaml
+python run.py myconfig.yaml        # use a different config
+python run.py input.yaml --ensemble 20 --jobs -1   # 20-member parallel ensemble
+```
+
+- **Single run** writes a multi-column time-series CSV (`time, z, T, qc, qr, Nc, Nr,
+  Na, LWC`) to `output.file` and prints a summary.
+- **`--ensemble N`** runs `N` stochastic members and writes the mean + 10–90
+  percentile envelope of the chosen `output.diagnostic`.
+- **`--jobs J`** sets how many CPU cores the ensemble uses (joblib): `-1` (default)
+  uses **all** cores, `1` runs serially, `4` uses four. Only matters with `--ensemble`.
+
+`input.yaml` exposes the parcel state, aerosol preset, collision/turbulence switches,
+and entrainment (λ, IHMD). The notebooks remain the primary interactive interface.
+
+The underlying library functions live in the package: `PyLCM.pylcm_run.run_single_series`
+(one ascent → diagnostic series) and `PyLCM.ensemble.run_ensemble` (parallel members).
 
 ## Performance
 
