@@ -152,37 +152,82 @@ def drop_condensation_fast(particles_list, T_parcel, q_parcel, P_parcel, nt, dt,
     return particles_list, T_parcel, q_parcel, S_lst, con_ts, act_ts, evp_ts, dea_ts
 
 
-def condense_soa(M, A, Ns, kappa, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel,
-                 rho_aero, kohler_activation_radius=False, switch_kappa_koehler=False,
-                 switch_kelvin=True, switch_solute=True):
-    """Persistent struct-of-arrays condensation step.
+def _tau_phase(M, A, T, P, air_mass):
+    """Phase relaxation timescale (Arnason & Brown 1971), vectorized mirror of
+    `compute_tau_phase`. tau = 1 / (4*pi*D * sum(A_i*r_i) / V). Small when there
+    is lots of droplet surface (fast vapor uptake) -> demands a finer substep."""
+    m = (M > 0.0) & (A > 0.0)
+    if not m.any():
+        return 1.0e10
+    r = (M[m] / (A[m] * 4.0 / 3.0 * _PI * rho_liq)) ** (1.0 / 3.0)
+    sum_A_r = float(np.sum(A[m] * r))
+    if sum_A_r <= 1.0e-20:
+        return 1.0e10
+    diff_coeff = 0.211e-4 * (T / 273.15) ** 1.94 * (101325.0 / P)
+    V_parcel = air_mass / (P / (287.0 * T))
+    return 1.0 / (4.0 * _PI * diff_coeff * sum_A_r / V_parcel)
 
-    Operates IN-PLACE on the persistent `M` array (no per-step object<->array
-    conversion) and reuses the SAME validated `_cond_kernel` as
-    `drop_condensation_fast`, so results are bit-identical to the object path —
-    this is purely the data-layout optimization, not a physics change.
 
-    Returns updated (T_parcel, q_parcel); `M` is mutated in place.
-    """
-    e_s = esatw(T_parcel)
-    e_a = q_parcel * P_parcel / (q_parcel + r_a / rv)
+def _cond_once(M, A, Ns, kappa, T, q, P, dt, air_mass, rho_aero,
+               kohler_activation_radius, switch_kappa_koehler,
+               switch_kelvin, switch_solute):
+    """One condensation step: recompute the T/q/P-dependent scalars, run the
+    validated kernel, update (T, q). Mutates M in place; returns (T, q)."""
+    e_s = esatw(T)
+    e_a = q * P / (q + r_a / rv)
     supersat = e_a / e_s - 1.0
 
-    thermal_conductivity = 7.94048E-05 * T_parcel + 0.00227011
-    diff_coeff = 0.211E-4 * (T_parcel / 273.15) ** 1.94 * (101325.0 / P_parcel)
-    G_pre = 1.0 / (rho_liq * rv * T_parcel / (e_s * diff_coeff) + (l_v / (rv * T_parcel) - 1.0) *
-                   rho_liq * l_v / (thermal_conductivity * T_parcel))
+    thermal_conductivity = 7.94048E-05 * T + 0.00227011
+    diff_coeff = 0.211E-4 * (T / 273.15) ** 1.94 * (101325.0 / P)
+    G_pre = 1.0 / (rho_liq * rv * T / (e_s * diff_coeff) + (l_v / (rv * T) - 1.0) *
+                   rho_liq * l_v / (thermal_conductivity * T))
     alpha = 0.036
-    r0 = diff_coeff / alpha * np.sqrt(2.0 * np.pi / (rv * T_parcel)) / (1.0 + diff_coeff * l_v ** 2 *
-                                                                        e_s / (thermal_conductivity * rv ** 2 *
-                                                                               T_parcel ** 3))
-    afactor0 = 2.0 * sigma_air_liq(T_parcel) / (rho_liq * rv * T_parcel)
+    r0 = diff_coeff / alpha * np.sqrt(2.0 * np.pi / (rv * T)) / (1.0 + diff_coeff * l_v ** 2 *
+                                                                e_s / (thermal_conductivity * rv ** 2 *
+                                                                       T ** 3))
+    afactor0 = 2.0 * sigma_air_liq(T) / (rho_liq * rv * T)
 
     dq_liq, _, _, _, _ = _cond_kernel(
         M, A, Ns, kappa, dt, supersat, G_pre, r0, afactor0,
         switch_kappa_koehler, switch_kelvin, switch_solute,
         kohler_activation_radius, rho_aero)
 
-    T_parcel = T_parcel + dq_liq * l_v / cp / air_mass_parcel
-    q_parcel = q_parcel - dq_liq / air_mass_parcel
-    return T_parcel, q_parcel
+    T = T + dq_liq * l_v / cp / air_mass
+    q = q - dq_liq / air_mass
+    return T, q
+
+
+def condense_soa(M, A, Ns, kappa, T_parcel, q_parcel, P_parcel, dt, air_mass_parcel,
+                 rho_aero, kohler_activation_radius=False, switch_kappa_koehler=False,
+                 switch_kelvin=True, switch_solute=True, switch_adaptive_dt=False):
+    """Persistent struct-of-arrays condensation step.
+
+    Operates IN-PLACE on the persistent `M` array (no per-step object<->array
+    conversion) and reuses the SAME validated `_cond_kernel` as
+    `drop_condensation_fast`, so the single-step path is bit-identical to the
+    object path — purely the data-layout optimization, not a physics change.
+
+    With `switch_adaptive_dt=True` the full `dt` is integrated in substeps of
+    `min(2*tau_phase, remaining)` (Arnason & Brown 1971), recomputing the
+    supersaturation between substeps. This prevents the supersaturation overshoot
+    (RH well above ~101%) that a single coarse Euler step produces under a strong
+    updraft, where the parcel cools faster than the droplets can consume vapor.
+
+    Returns updated (T_parcel, q_parcel); `M` is mutated in place.
+    """
+    if not switch_adaptive_dt:
+        return _cond_once(M, A, Ns, kappa, T_parcel, q_parcel, P_parcel, dt,
+                          air_mass_parcel, rho_aero, kohler_activation_radius,
+                          switch_kappa_koehler, switch_kelvin, switch_solute)
+
+    time_sub = 0.0
+    T, q = T_parcel, q_parcel
+    while time_sub < dt - 1.0e-20:
+        tau = _tau_phase(M, A, T, P_parcel, air_mass_parcel)
+        dt_sub = min(2.0 * tau, dt - time_sub)
+        dt_sub = max(dt_sub, 1.0e-6)  # minimum substep floor
+        T, q = _cond_once(M, A, Ns, kappa, T, q, P_parcel, dt_sub,
+                          air_mass_parcel, rho_aero, kohler_activation_radius,
+                          switch_kappa_koehler, switch_kelvin, switch_solute)
+        time_sub += dt_sub
+    return T, q

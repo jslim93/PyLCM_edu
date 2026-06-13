@@ -56,7 +56,7 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             sig=(3.3, 1.6, 2.2), kappa=1.6, ascending_mode="linear",
             collisions=True, switch_turb=False,
             eps=0.0, lambda_ent=0.0, ihmd=0.0, init_mode="Random",
-            collect=None):
+            adaptive_dt=True, collect=None):
     """One full ascent on persistent arrays. Returns (diagnostics_by_time, (M,A)).
 
     Entrainment mixing (warm-cloud, Lim & Hoffmann 2023): with lambda_ent>0 the
@@ -107,7 +107,8 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             evap = m0 - M.sum()
             q = q + evap / air_mass
             T = T - l_v * evap / cp / air_mass
-        T, q = condense_soa(M, A, Ns, ka, T, q, P, dt, air_mass, rho_aero)
+        T, q = condense_soa(M, A, Ns, ka, T, q, P, dt, air_mass, rho_aero,
+                            switch_adaptive_dt=adaptive_dt)
         if collisions:
             M, A, Ns, ka = collide_soa(M, A, Ns, ka, dt, rho_p, P, T,
                                        switch_turb_kernel=switch_turb, epsilon_turb=eps)[:4]
