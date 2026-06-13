@@ -28,10 +28,14 @@ def _analysis(M, A, air_mass):
     rain = m & (r >= seperation_radius_ts)
     qc = np.sum(M[cloud]) / air_mass * 1e3
     qr = np.sum(M[rain]) / air_mass * 1e3
+    qa = np.sum(M[aero]) / air_mass * 1e3
     NA = np.sum(A[aero]) / air_mass / 1e6
     NC = np.sum(A[cloud]) / air_mass / 1e6
     NR = np.sum(A[rain]) / air_mass / 1e6
-    return qc, qr, NA, NC, NR
+    # number-weighted mean radius of cloud+rain droplets (µm), for the DSD overlay
+    big = cloud | rain
+    rv_mean = (np.sum(A[big] * r[big]) / np.sum(A[big]) * 1e6) if big.any() else 0.0
+    return qc, qr, qa, NA, NC, NR, rv_mean
 
 
 def dsd_spectrum(M, A, air_mass, n_bins=40, r_min=1e-7, r_max=5e-3):
@@ -49,7 +53,8 @@ def dsd_spectrum(M, A, air_mass, n_bins=40, r_min=1e-7, r_max=5e-3):
 
 def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             w=1.0, N_raw=(118., 11., .72), mu_um=(.019, .056, .46),
-            sig=(3.3, 1.6, 2.2), kappa=1.6, collisions=True, switch_turb=False,
+            sig=(3.3, 1.6, 2.2), kappa=1.6, ascending_mode="linear",
+            collisions=True, switch_turb=False,
             eps=0.0, lambda_ent=0.0, ihmd=0.0, collect=None):
     """One full ascent on persistent arrays. Returns (diagnostics_by_time, (M,A)).
 
@@ -67,10 +72,16 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
     # environmental vapor profile (decreases to ~2 g/kg at the top), for entrainment
     qv_prof = np.maximum(q0 - (q0 - 2e-3) / len(z_env) * np.arange(len(z_env)), 2e-3)
 
+    # per-mode hygroscopicity: kappa may be a scalar (all modes) or a per-mode tuple
+    if np.isscalar(kappa):
+        k_aero = [kappa] * (len(N_raw) + 1)
+    else:
+        k_aero = list(kappa) + [list(kappa)[-1]]
+
     np.random.seed(seed)
     seed_numba_rng(seed)  # the @njit collision kernel uses Numba's separate RNG
     T, q, pl = aero_init("Random", n_ptcl, P0, 0.0, T0, q0, np.array(N_raw) * 1e6,
-                         mu, sg, rho_aero, [kappa] * (len(N_raw) + 1), False)
+                         mu, sg, rho_aero, k_aero, False)
     # extract persistent arrays ONCE
     M = np.array([p.M for p in pl], dtype=np.float64)
     A = np.array([p.A for p in pl], dtype=np.float64)
@@ -80,7 +91,7 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
     P, z = P0, 0.0
     out = {}
     for t in range(nt):
-        z, T, P = ascend_parcel(z, T, P, w, dt, (t + 1) * dt, 3000.0, th, None, "linear")
+        z, T, P = ascend_parcel(z, T, P, w, dt, (t + 1) * dt, 3000.0, th, 1200.0, ascending_mode)
         rho_p, _, air_mass = parcel_rho(P, T)
         if lambda_ent > 0.0:
             # entrainment mixing FIRST (mirror ParameterizedMixing on arrays)
@@ -100,8 +111,10 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             M, A, Ns, ka = collide_soa(M, A, Ns, ka, dt, rho_p, P, T,
                                        switch_turb_kernel=switch_turb, epsilon_turb=eps)[:4]
         if (t + 1) in collect:
-            qc, qr, NA, NC, NR = _analysis(M, A, air_mass)
+            qc, qr, qa, NA, NC, NR, rv_mean = _analysis(M, A, air_mass)
             centers, num = dsd_spectrum(M, A, air_mass)
-            out[t + 1] = dict(T=T - 273.15, z=z, qc=qc, qr=qr, NC=NC, NR=NR, NA=NA,
+            e_s = esatw(T); e_a = q * P / (q + r_a / rv)
+            out[t + 1] = dict(T=T - 273.15, T_K=T, z=z, RH=e_a / e_s, qv=q * 1e3,
+                              qa=qa, qc=qc, qr=qr, NA=NA, NC=NC, NR=NR, rv=rv_mean,
                               dsd_r=centers, dsd_n=num)
     return out, (M, A)
