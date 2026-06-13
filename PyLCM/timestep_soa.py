@@ -14,7 +14,7 @@ from PyLCM.aero_init import aero_init
 from PyLCM.parcel import ascend_parcel, parcel_rho
 from PyLCM.condensation import esatw
 from PyLCM.condensation_fast import condense_soa
-from PyLCM.collision_soa import collide_soa
+from PyLCM.collision_soa import collide_soa, seed_numba_rng
 
 
 def _analysis(M, A, air_mass):
@@ -47,6 +47,7 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
     q0 = RH * esatw(T0) / (P0 - RH * esatw(T0)) * r_a / rv
 
     np.random.seed(seed)
+    seed_numba_rng(seed)  # the @njit collision kernel uses Numba's separate RNG
     T, q, pl = aero_init("Random", n_ptcl, P0, 0.0, T0, q0, np.array(N_raw) * 1e6,
                          mu, sg, rho_aero, [kappa] * (len(N_raw) + 1), False)
     # extract persistent arrays ONCE

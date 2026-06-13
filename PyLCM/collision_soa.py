@@ -342,6 +342,13 @@ def _same_weights_update(M, A, Ns, kappa, i, j):
     kappa[j] = new_kappa
 
 
+@njit(cache=True)
+def seed_numba_rng(s):
+    """Seed Numba's internal RNG (separate from np.random; not reset by
+    np.random.seed). Call this so the SoA collision is reproducible per seed."""
+    np.random.seed(s)
+
+
 def collide_soa(M, A, Ns, kappa, dt, rho_parcel, p_env, T_parcel,
                 switch_E_constant=False, switch_vt_simple=False,
                 switch_turb_kernel=False, epsilon_turb=0.0):
