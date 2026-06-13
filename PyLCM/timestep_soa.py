@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
 
-from PyLCM.parameters import (p0, r_a, cp, rv, rho_liq, rho_aero, z_env, pi,
+from PyLCM.parameters import (p0, r_a, cp, rv, l_v, rho_liq, rho_aero, z_env, pi,
                               activation_radius_ts, seperation_radius_ts)
 from PyLCM.aero_init import aero_init
 from PyLCM.parcel import ascend_parcel, parcel_rho
@@ -50,14 +50,22 @@ def dsd_spectrum(M, A, air_mass, n_bins=40, r_min=1e-7, r_max=5e-3):
 def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             w=1.0, N_raw=(118., 11., .72), mu_um=(.019, .056, .46),
             sig=(3.3, 1.6, 2.2), kappa=1.6, collisions=True, switch_turb=False,
-            eps=0.0, collect=None):
-    """One full ascent on persistent arrays. Returns (diagnostics_by_time, (M,A))."""
+            eps=0.0, lambda_ent=0.0, ihmd=0.0, collect=None):
+    """One full ascent on persistent arrays. Returns (diagnostics_by_time, (M,A)).
+
+    Entrainment mixing (warm-cloud, Lim & Hoffmann 2023): with lambda_ent>0 the
+    parcel entrains environmental air each step and redistributes cloud liquid by
+    the Inhomogeneous Mixing Degree ihmd (0 homogeneous .. 1 inhomogeneous),
+    `N_c/N_{c,0} = (q_c/q_{c,0})^IHMD` — vectorized mirror of ParameterizedMixing.
+    """
     if collect is None:
         collect = (nt // 3, 2 * nt // 3, nt)
     mu = np.log(np.array(mu_um) * 1e-6)
     sg = np.log(np.array(sig))
     th = T0 * (p0 / P0) ** (r_a / cp) + 5e-3 * z_env
     q0 = RH * esatw(T0) / (P0 - RH * esatw(T0)) * r_a / rv
+    # environmental vapor profile (decreases to ~2 g/kg at the top), for entrainment
+    qv_prof = np.maximum(q0 - (q0 - 2e-3) / len(z_env) * np.arange(len(z_env)), 2e-3)
 
     np.random.seed(seed)
     seed_numba_rng(seed)  # the @njit collision kernel uses Numba's separate RNG
@@ -74,6 +82,19 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
     for t in range(nt):
         z, T, P = ascend_parcel(z, T, P, w, dt, (t + 1) * dt, 3000.0, th, None, "linear")
         rho_p, _, air_mass = parcel_rho(P, T)
+        if lambda_ent > 0.0:
+            # entrainment mixing FIRST (mirror ParameterizedMixing on arrays)
+            frac = min(lambda_ent * w * dt, 0.999)
+            T_env = float(np.interp(z, z_env, th)) * (P / p0) ** (r_a / cp)
+            q_env = float(np.interp(z, z_env, qv_prof))
+            T = T + frac * (T_env - T)
+            q = q + frac * (q_env - q)
+            m0 = M.sum()
+            M = M * (1.0 - frac)
+            A = np.round(A * (1.0 - frac) ** ihmd)      # integer droplet removal
+            evap = m0 - M.sum()
+            q = q + evap / air_mass
+            T = T - l_v * evap / cp / air_mass
         T, q = condense_soa(M, A, Ns, ka, T, q, P, dt, air_mass, rho_aero)
         if collisions:
             M, A, Ns, ka = collide_soa(M, A, Ns, ka, dt, rho_p, P, T,
