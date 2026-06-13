@@ -34,6 +34,19 @@ def _analysis(M, A, air_mass):
     return qc, qr, NA, NC, NR
 
 
+def dsd_spectrum(M, A, air_mass, n_bins=40, r_min=1e-7, r_max=5e-3):
+    """Number-concentration droplet size distribution (per cm^3) over log-radius
+    bins. Pure diagnostic — no physics. Returns (bin_centers_m, number_per_bin_cm3)."""
+    m = A > 0
+    r = np.zeros_like(M)
+    r[m] = (M[m] / (A[m] * 4.0 / 3.0 * pi * rho_liq)) ** (1.0 / 3.0)
+    edges = np.logspace(np.log10(r_min), np.log10(r_max), n_bins + 1)
+    centers = np.sqrt(edges[:-1] * edges[1:])
+    num, _ = np.histogram(r[m], bins=edges, weights=A[m])
+    num = num / air_mass / 1e6
+    return centers, num
+
+
 def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             w=1.0, N_raw=(118., 11., .72), mu_um=(.019, .056, .46),
             sig=(3.3, 1.6, 2.2), kappa=1.6, collisions=True, switch_turb=False,
@@ -67,5 +80,7 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
                                        switch_turb_kernel=switch_turb, epsilon_turb=eps)[:4]
         if (t + 1) in collect:
             qc, qr, NA, NC, NR = _analysis(M, A, air_mass)
-            out[t + 1] = dict(T=T - 273.15, z=z, qc=qc, qr=qr, NC=NC, NR=NR, NA=NA)
+            centers, num = dsd_spectrum(M, A, air_mass)
+            out[t + 1] = dict(T=T - 273.15, z=z, qc=qc, qr=qr, NC=NC, NR=NR, NA=NA,
+                              dsd_r=centers, dsd_n=num)
     return out, (M, A)
