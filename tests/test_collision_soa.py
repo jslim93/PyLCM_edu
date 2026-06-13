@@ -19,7 +19,7 @@ import matplotlib; matplotlib.use("Agg")
 from numba import njit
 
 from PyLCM.parameters import rho_liq, r_a, p0, cp, rv, rho_aero, z_env
-from PyLCM.collision_soa import collide_soa
+from PyLCM.collision_soa import collide_soa, collide_soa_enumerate
 
 
 @njit(cache=True)
@@ -76,6 +76,25 @@ def test_conservation_integer_noghost_gravitational():
 
 def test_conservation_integer_noghost_turbulent():
     _check_invariants(switch_turb_kernel=True, epsilon_turb=0.04)
+
+
+def test_enumerate_mode_same_invariants():
+    """The O(N^2) enumeration option (LSM off) must obey the SAME invariants:
+    water conserved, A integer & non-increasing, no ghosts."""
+    M, A, Ns, kappa = _build_cloud(seed=0, n=400)   # small N: O(N^2)
+    T, P = 283.0, 900e2
+    rho_parcel = P / (r_a * T)
+    M0, A0 = M.sum(), A.sum()
+    np.random.seed(7)
+    _seed_numba_rng(7)
+    M, A, Ns, kappa, n_removed = collide_soa_enumerate(
+        M, A, Ns, kappa, 1.0, rho_parcel, P, T)
+
+    assert np.isclose(M.sum(), M0, rtol=1e-9, atol=0.0), "enumerate: water not conserved"
+    assert A.sum() <= A0 + 1e-6, "enumerate: A increased"
+    assert np.allclose(A, np.round(A), atol=1e-9), "enumerate: A not integer-valued"
+    assert np.count_nonzero((M <= 0.0) & (A > 0.0)) == 0, "enumerate: ghost droplet"
+    assert n_removed >= 0
 
 
 def test_invariants_over_many_steps():

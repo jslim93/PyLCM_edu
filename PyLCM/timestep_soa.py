@@ -14,7 +14,7 @@ from PyLCM.aero_init import aero_init
 from PyLCM.parcel import ascend_parcel, parcel_rho
 from PyLCM.condensation import esatw
 from PyLCM.condensation_fast import condense_soa
-from PyLCM.collision_soa import collide_soa, seed_numba_rng
+from PyLCM.collision_soa import collide_soa, collide_soa_enumerate, seed_numba_rng
 
 
 def _analysis(M, A, air_mass):
@@ -54,7 +54,7 @@ def dsd_spectrum(M, A, air_mass, n_bins=60, r_min=5e-7, r_max=2e-3):
 def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
             w=1.0, N_raw=(118., 11., .72), mu_um=(.019, .056, .46),
             sig=(3.3, 1.6, 2.2), kappa=1.6, ascending_mode="linear",
-            collisions=True, switch_turb=False,
+            collisions=True, collision_mode="lsm", switch_turb=False,
             eps=0.0, lambda_ent=0.0, ihmd=0.0, init_mode="Random",
             adaptive_dt=True, collect=None):
     """One full ascent on persistent arrays. Returns (diagnostics_by_time, (M,A)).
@@ -110,8 +110,11 @@ def run_soa(seed=0, n_ptcl=2000, nt=1500, dt=1.0, T0=293.2, P0=1013e2, RH=0.92,
         T, q = condense_soa(M, A, Ns, ka, T, q, P, dt, air_mass, rho_aero,
                             switch_adaptive_dt=adaptive_dt)
         if collisions:
-            M, A, Ns, ka = collide_soa(M, A, Ns, ka, dt, rho_p, P, T,
-                                       switch_turb_kernel=switch_turb, epsilon_turb=eps)[:4]
+            # LSM (O(N), Shima 2009) is the default; "enumerate" runs the full
+            # O(N^2) all-pairs scheme (Fortran-style) for validation/comparison.
+            _collide = collide_soa_enumerate if collision_mode == "enumerate" else collide_soa
+            M, A, Ns, ka = _collide(M, A, Ns, ka, dt, rho_p, P, T,
+                                    switch_turb_kernel=switch_turb, epsilon_turb=eps)[:4]
         if (t + 1) in collect:
             qc, qr, qa, NA, NC, NR, rv_mean = _analysis(M, A, air_mass)
             centers, num = dsd_spectrum(M, A, air_mass)

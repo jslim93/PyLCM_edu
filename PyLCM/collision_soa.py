@@ -392,3 +392,101 @@ def collide_soa(M, A, Ns, kappa, dt, rho_parcel, p_env, T_parcel,
         kappa = np.ascontiguousarray(kappa[keep])
 
     return M, A, Ns, kappa, n_removed
+
+
+@njit(cache=True)
+def _enumerate_kernel(M, A, Ns, kappa, dt, rho_parcel, p_env, T_parcel,
+                      switch_E_constant, switch_vt_simple,
+                      switch_turb_kernel, epsilon_turb):
+    """O(n^2) brute-force collision: the EXACT per-pair physics of
+    `_collision_kernel`, but over every i<j pair and with NO LSM upscaling
+    (each pair evaluated at its true probability). This is the same scheme a
+    full-enumeration reference (e.g. the Fortran box model) uses. O(n^2), so
+    only practical for modest n — research/validation use, not the default."""
+    V_parcel = PARCEL_AIR_MASS / rho_parcel
+    n = M.shape[0]
+    for i in range(n):
+        for j in range(i + 1, n):
+            Ai = A[i]; Aj = A[j]; Mi = M[i]; Mj = M[j]
+            if min(Ai, Aj) <= 0.0:
+                continue
+            if max(Ai, Aj) <= 1.0:
+                continue
+            if Mi <= 0.0 or Mj <= 0.0:
+                continue
+
+            xi = Mi / Ai
+            xj = Mj / Aj
+            if max(xi, xj) < _MASS_10UM:
+                continue
+
+            R_n = (xi / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
+            R_m = (xj / (4.0 / 3.0 * pi * rho_liq)) ** 0.33333333333
+
+            if switch_vt_simple:
+                v_r1 = ws_drops_stokes(R_n, rho_parcel, rho_liq)
+                v_r2 = ws_drops_stokes(R_m, rho_parcel, rho_liq)
+            else:
+                v_r1 = ws_drops_beard(R_n, rho_parcel, rho_liq, p_env, T_parcel)
+                v_r2 = ws_drops_beard(R_m, rho_parcel, rho_liq, p_env, T_parcel)
+            v_r = abs(v_r1 - v_r2)
+
+            if switch_E_constant:
+                E_coll = 1.0
+            else:
+                E_coll = E_H80(R_m, R_n)
+
+            if switch_turb_kernel and epsilon_turb > 1.0e-10:
+                urms_est = 2.02 * (epsilon_turb / 0.04) ** (1.0 / 3.0)
+                tke_est = 1.5 * urms_est ** 2
+                K = (E_coll * gck(R_n, R_m, v_r1, v_r2, epsilon_turb, tke_est)
+                     * E_turb(R_n, R_m, epsilon_turb)
+                     * E_S09(R_m, R_n, v_r, rho_liq, T_parcel))
+            else:
+                K = (pi * (R_m + R_n) ** 2 * v_r * E_coll
+                     * E_S09(R_m, R_n, v_r, rho_liq, T_parcel))
+
+            # true per-pair probability — NO LSM upscaling
+            p_crit = max(Ai, Aj) * K / V_parcel * dt
+            if p_crit > np.random.random():
+                if p_crit <= 1.0:
+                    p_int = 1
+                else:
+                    p_int = max(int(round(p_crit)), 1)
+                    A_max = max(Ai, Aj); A_min = min(Ai, Aj)
+                    p_crit_lim = max(int((A_max - 1) / A_min), 1)
+                    p_int = min(p_int, p_crit_lim)
+                if Ai == Aj:
+                    _same_weights_update(M, A, Ns, kappa, i, j)
+                else:
+                    _liquid_update_collection(M, A, Ns, kappa, i, j, p_int)
+
+
+def collide_soa_enumerate(M, A, Ns, kappa, dt, rho_parcel, p_env, T_parcel,
+                          switch_E_constant=False, switch_vt_simple=False,
+                          switch_turb_kernel=False, epsilon_turb=0.0):
+    """Full O(n^2) pair-enumeration collision (LSM disabled).
+
+    Drop-in alternative to `collide_soa` with the SAME signature, return tuple,
+    and per-pair physics — it just evaluates EVERY pair instead of LSM's n/2
+    sample. Use for validation / Fortran-style comparison. NOT the default:
+    cost scales O(n^2), so it is impractical beyond a few thousand droplets.
+    """
+    n = len(M)
+    if n < 2:
+        return M, A, Ns, kappa, 0
+
+    _enumerate_kernel(M, A, Ns, kappa,
+                      float(dt), float(rho_parcel), float(p_env), float(T_parcel),
+                      bool(switch_E_constant), bool(switch_vt_simple),
+                      bool(switch_turb_kernel), float(epsilon_turb))
+
+    keep = A > 0.0
+    n_removed = int(n - np.count_nonzero(keep))
+    if n_removed > 0:
+        M = np.ascontiguousarray(M[keep])
+        A = np.ascontiguousarray(A[keep])
+        Ns = np.ascontiguousarray(Ns[keep])
+        kappa = np.ascontiguousarray(kappa[keep])
+
+    return M, A, Ns, kappa, n_removed
