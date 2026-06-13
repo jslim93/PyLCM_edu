@@ -18,3 +18,5 @@ Output/
 .venv/
 env/
 venv/
+# Internal planning/spec artifacts (not for distribution)
+docs/superpowers/
