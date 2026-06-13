@@ -17,3 +17,4 @@ dependencies:
   - pip
   - pip:
     - plotly>=5.0
+    - streamlit>=1.30
