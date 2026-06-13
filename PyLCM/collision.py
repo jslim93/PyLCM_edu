@@ -34,6 +34,10 @@ def collection(dt, particles_list, rho_parcel, rho_liq, p_env, T_parcel, acc_ts,
         #  A superdroplet must contain at least one real particle to collect other droplets
         if min(particle1.A, particle2.A) <= 0:
             continue
+
+        # A single-droplet super-droplet (A<=1) has no droplets to give away.
+        if max(particle1.A, particle2.A) <= 1:
+            continue
         
         # The larger droplet should be larger than 10.0 µm to cause collisions.
         if max(particle1.M / particle1.A, particle2.M / particle2.A) < (10.0E-6 ** 3) * 4.0 / 3.0 * np.pi * rho_liq:
@@ -117,8 +121,10 @@ def liquid_update_collection(particle1, particle2, acc_ts, aut_ts, p_crit=1):
 
     #Decrease of number, aerosol and water mass due to collision
     ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A * p_crit
-    ptcl_int2.M  = ptcl_int2.M - ptcl_int1.A * x_int * p_crit
-    ptcl_int2.Ns = ptcl_int2.Ns - ptcl_int1.A * xs_int * p_crit
+    # Reconstruct from per-droplet mass so M, Ns stay exactly proportional to A
+    # (avoids catastrophic cancellation that left M=0 while A>0).
+    ptcl_int2.M  = x_int * ptcl_int2.A
+    ptcl_int2.Ns = xs_int * ptcl_int2.A
     
     mass_crit = (seperation_radius_ts ** 3) * 4.0 / 3.0 * np.pi * rho_liq
     
@@ -168,13 +174,24 @@ def same_weights_update(ptcl_int1, ptcl_int2, acc_ts, aut_ts):
     xsn = ptcl_int1.Ns / ptcl_int1.A # individual aerosol mass of particle 1
     xsm = ptcl_int2.Ns / ptcl_int2.A # individual aerosol mass of particle 2
 
-    ptcl_int1.A  = ptcl_int1.A * 0.5
-    ptcl_int2.A  = ptcl_int2.A - ptcl_int1.A  # handles rounding like Fortran FLOOR
-
-    ptcl_int1.M  = (xn + xm) * ptcl_int1.A
-    ptcl_int2.M  = (xn + xm) * ptcl_int2.A
-    ptcl_int1.Ns = (xsn + xsm) * ptcl_int1.A
-    ptcl_int2.Ns = (xsn + xsm) * ptcl_int2.A
+    # SAM-style integer floor split of equal weighting factors.
+    A_total = ptcl_int1.A
+    A_half = float(A_total // 2)
+    if A_half < 1:
+        # Too few to split: merge all into ptcl_int1, remove ptcl_int2.
+        ptcl_int1.A  = A_total
+        ptcl_int1.M  = (xn + xm) * A_total
+        ptcl_int1.Ns = (xsn + xsm) * A_total
+        ptcl_int2.A  = 0.0
+        ptcl_int2.M  = 0.0
+        ptcl_int2.Ns = 0.0
+    else:
+        ptcl_int1.A  = A_half
+        ptcl_int2.A  = A_total - A_half
+        ptcl_int1.M  = (xn + xm) * ptcl_int1.A
+        ptcl_int2.M  = (xn + xm) * ptcl_int2.A
+        ptcl_int1.Ns = (xsn + xsm) * ptcl_int1.A
+        ptcl_int2.Ns = (xsn + xsm) * ptcl_int2.A
     
     #Update volume-mean averaged kappa (compute first, then assign to avoid sequential mutation)
     new_kappa = (v_ptcl1*ptcl_int1.kappa + v_ptcl2*ptcl_int2.kappa) / (v_ptcl1 + v_ptcl2)
