@@ -105,8 +105,11 @@ def timeseries_figure(runs, dt):
         tsec = ts * dt
         def add(key, row, col, color, name, scale=1.0):
             _, y = _series(out, key)
+            y = y * scale
+            if row == 3 and col == 2:   # log number panel: hide zeros (no -inf spikes)
+                y = np.where(y > 0, y, np.nan)
             fig.add_trace(go.Scatter(
-                x=tsec, y=y * scale, mode="lines", name=pre + name,
+                x=tsec, y=y, mode="lines", name=pre + name,
                 line=dict(color=None if multi else color, dash=dash),
                 legendgroup=label, showlegend=(row == 3)),
                 row=row, col=col)

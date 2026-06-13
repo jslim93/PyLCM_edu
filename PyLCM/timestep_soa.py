@@ -38,7 +38,7 @@ def _analysis(M, A, air_mass):
     return qc, qr, qa, NA, NC, NR, rv_mean
 
 
-def dsd_spectrum(M, A, air_mass, n_bins=40, r_min=1e-7, r_max=5e-3):
+def dsd_spectrum(M, A, air_mass, n_bins=60, r_min=5e-7, r_max=2e-3):
     """Number-concentration droplet size distribution (per cm^3) over log-radius
     bins. Pure diagnostic — no physics. Returns (bin_centers_m, number_per_bin_cm3)."""
     m = A > 0
