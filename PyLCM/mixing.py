@@ -32,7 +32,7 @@ def redistribute_droplets(particles_list, ihmd, frac):
             continue
         m_old = p.M
         p.M = p.M * keep_mass
-        p.A = p.A * keep_num
+        p.A = float(round(p.A * keep_num))  # remove whole droplets (integer multiplicity)
         evaporated += m_old - p.M
     return evaporated
 
